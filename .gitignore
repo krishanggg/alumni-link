@@ -1,0 +1,90 @@
+# Dependencies
+backend/vendor/
+web/node_modules/
+mobile/node_modules/
+
+# Environment
+.env
+backend/.env
+web/.env
+mobile/.env
+
+# Local docker-compose bind-mount data (see docker-compose.yml header)
+.compose-data/
+
+# Build output
+web/dist/
+mobile/.expo/
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Laravel
+backend/storage/app/backups/
+backend/storage/framework/cache/data/
+backend/storage/framework/sessions/
+backend/storage/framework/views/
+backend/storage/logs/
+backend/public/storage/
+backend/public/hot/
+
+# Logs
+*.log
+
+# Test
+backend/.phpunit.cache/
+backend/.phpunit.result.cache
+
+# Expo
+mobile/ios/
+mobile/android/
+
+.playwright-mcp
+
+# impeccable-ignore-start
+# Ephemeral output, runtime state, and per-dev overrides.
+# Unanchored: .impeccable may sit at the repo root or under a nested
+# workspace (apps/web/.impeccable/...); anchored patterns would miss it.
+# Shared artifacts stay tracked: config.json, live/config.json,
+# design.json, surfaces/*.md, critique/*.md.
+.impeccable/config.local.json
+.impeccable/hook.cache.json
+.impeccable/hook.pending.json
+.impeccable/*.png
+.impeccable/review/
+.impeccable/questions/
+.impeccable/live/server.json
+.impeccable/live/sessions/
+.impeccable/live/previews/
+.impeccable/live/annotations/
+.impeccable/live/cache/
+.impeccable/live/manual-edit-apply-transaction.json
+.impeccable/live/manual-edit-events.jsonl
+.impeccable/live/manual-edit-evidence/
+.impeccable/live/pending-manual-edits.json
+.impeccable/live/deferred-svelte-component-accepts.json
+.impeccable/live/*.png
+# impeccable-ignore-end
+
+# Impeccable plugin installs (vendored per coding tool; keep local, not in the repo)
+.claude/skills/impeccable/
+.claude/agents/impeccable-*
+.cursor/skills/impeccable/
+.cursor/agents/impeccable-*
+.gemini/skills/impeccable/
+.gemini/agents/impeccable-*
+.github/skills/impeccable/
+.github/agents/impeccable-*
+.github/hooks/impeccable.json
+.agents/skills/impeccable/
+.agents/agents/impeccable-*
+.opencode/skills/impeccable/
+.opencode/agents/impeccable-*
+
+.codegraph/

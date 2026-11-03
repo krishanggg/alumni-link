@@ -1,0 +1,5 @@
+@echo off
+setlocal EnableExtensions
+set "ROOT=%~dp0"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%ROOT%powershell\mobile-build.ps1"
+exit /b %ERRORLEVEL%

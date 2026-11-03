@@ -1,0 +1,35 @@
+<IfModule mod_rewrite.c>
+    Options -MultiViews -Indexes
+
+    RewriteEngine On
+
+    # Never serve editor files, environment/config files, SQL dumps, or
+    # log-like artifacts even if an administrator accidentally places one
+    # under public. The explicit names also let doctor.bat test these rules
+    # without creating a real secret-bearing file.
+    RewriteRule (^|/)(?:\.env(?:\..*)?|(?:config|composer|phpunit)\.(?:php|json|xml)|.*\.(?:env|ini|log|sql|sql\.gz|bak|old))$ - [F,L,NC]
+
+    # Preserve auth and CSRF headers for Laravel.
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+    RewriteCond %{HTTP:x-xsrf-token} .
+    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
+
+    # Laravel API, Sanctum, broadcasting auth, and health requests must reach
+    # the PHP front controller. Existing /storage files are served directly;
+    # missing storage files return Laravel's 404 instead of the SPA shell.
+    RewriteRule ^(?:api|sanctum|broadcasting|up)(?:/.*)?$ index.php [L]
+    RewriteCond %{REQUEST_URI} ^/storage/
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+
+    # Root and browser deep links load the built React application.
+    RewriteRule ^$ app/index.html [L]
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ app/index.html [L]
+</IfModule>
+
+<FilesMatch "^(?:\.env(?:\..*)?|(?:config|composer|phpunit)\.(?:php|json|xml)|.*\.(?:env|ini|log|sql|sql\.gz|bak|old))$">
+    Require all denied
+</FilesMatch>

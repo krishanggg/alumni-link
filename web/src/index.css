@@ -1,0 +1,628 @@
+@import "tailwindcss";
+
+/*
+ * AppShell's tablet icon-rail band (768px-1199px) only — see AppShell.tsx
+ * and NavRailFlyout.tsx. A plain `md:` there would overlap with `desktop:`
+ * (`--breakpoint-desktop: 1200px` below): both are unbounded-upper ranges,
+ * and Tailwind does not reliably emit `md:` utility rules after `desktop:`
+ * ones in the compiled stylesheet when `desktop` is a custom breakpoint
+ * sitting between two default ones — confirmed by inspecting the built CSS,
+ * where a second `md:` block (containing the actual utility classes) landed
+ * *after* the `desktop:` block for this project. Any `md:X … desktop:Y`
+ * override pair is silently broken by that ordering, at every viewport
+ * width, not just some. Bounding this variant's upper edge below 1200px
+ * removes the ordering dependency entirely: only one of `rail:` / `desktop:`
+ * can ever be true at a given width, so which one the compiler emits first
+ * no longer matters.
+ */
+@custom-variant rail (@media (768px <= width < 1200px));
+
+@theme {
+  --color-surface: #f7f9fb;
+  --color-surface-dim: #d8dadc;
+  --color-surface-bright: #f7f9fb;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f2f4f6;
+  --color-surface-container: #eceef0;
+  --color-surface-container-high: #e6e8ea;
+  --color-surface-container-highest: #e0e3e5;
+  --color-on-surface: #191c1e;
+  --color-on-surface-variant: #444750;
+  --color-inverse-surface: #2d3133;
+  --color-inverse-on-surface: #eff1f3;
+  --color-outline: #747781;
+  --color-outline-variant: #c4c6d1;
+  --color-surface-tint: #2d75b4;
+  --color-primary: #2d75b4;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #3f85c4;
+  --color-on-primary-container: #eaf2fa;
+  --color-inverse-primary: #bcd7f2;
+  --color-secondary: #0041c9;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #0356ff;
+  --color-on-secondary-container: #e4e7ff;
+  --color-tertiary: #191e27;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #2e333d;
+  --color-on-tertiary-container: #969ba7;
+  --color-success-container: #e2f7e8;
+  --color-on-success-container: #1e7d3c;
+  --color-warning-container: #fef3dc;
+  --color-on-warning-container: #a15c00;
+  --color-info-container: #e2eaff;
+  --color-on-info-container: #0041c9;
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-primary-fixed: #dcebf8;
+  --color-primary-fixed-dim: #bcd7f2;
+  --color-on-primary-fixed: #0d3255;
+  --color-on-primary-fixed-variant: #1f5a8c;
+  --color-secondary-fixed: #dce1ff;
+  --color-secondary-fixed-dim: #b6c4ff;
+  --color-on-secondary-fixed: #001551;
+  --color-on-secondary-fixed-variant: #0039b3;
+  --color-tertiary-fixed: #dee2ef;
+  --color-tertiary-fixed-dim: #c2c6d3;
+  --color-on-tertiary-fixed: #171c25;
+  --color-on-tertiary-fixed-variant: #424751;
+  --color-background: #f7f9fb;
+  --color-on-background: #191c1e;
+  --color-surface-variant: #e0e3e5;
+  --color-accent: #1476d6;
+  --color-accent-hover: #105ca8;
+  --color-sidebar: #2d75b4;
+  --color-sidebar-deep: #23598b;
+  --color-sidebar-hover: #3f85c4;
+  --color-sidebar-active: #1476d6;
+
+  /* Approved chart series shared by canvas charts and visual legends. */
+  --color-chart-blue: #0041c9;
+  --color-chart-green: #1e9e5a;
+  --color-chart-amber: #f4a51e;
+  --color-chart-orange: #f4841e;
+  --color-chart-purple: #5b3ec9;
+  --color-chart-crimson: #c4384a;
+  --color-chart-on-color: #ffffff;
+
+  /* Existing soft tone gradient endpoints, named here so components do not
+     carry one-off color literals beside the Academic Heritage palette. */
+  --color-tone-blue-end: #cdd9ff;
+  --color-tone-green-end: #c8eed3;
+  --color-tone-purple-start: #ede6fd;
+  --color-tone-purple-end: #dcd0fa;
+  --color-tone-purple-foreground: var(--color-chart-purple);
+  --color-tone-amber-end: #fbe4b8;
+  --color-tone-red-start: #ffe2df;
+  --color-tone-red-end: #ffcac4;
+  --color-tone-gray-end: #dfe2e6;
+
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  /*
+   * Typography scale — one role per step, reused everywhere instead of ad hoc
+   * sizes. Each `text-*` utility also carries its own letter-spacing so
+   * headings tighten and small caps-style labels open up automatically;
+   * font-weight stays on the separate `font-*` utility so a size and a
+   * weight can be mixed independently (e.g. `text-body-md font-label-md`
+   * for button text).
+   */
+  --text-display-lg: 32px;
+  --text-display-lg--line-height: 38px;
+  --text-display-lg--letter-spacing: -0.02em;
+  --text-display-md: 26px;
+  --text-display-md--line-height: 32px;
+  --text-display-md--letter-spacing: -0.015em;
+  --text-headline-lg: 22px;
+  --text-headline-lg--line-height: 28px;
+  --text-headline-lg--letter-spacing: -0.01em;
+  --text-headline-sm: 20px;
+  --text-headline-sm--line-height: 28px;
+  --text-headline-sm--letter-spacing: -0.005em;
+  --text-title-md: 16px;
+  --text-title-md--line-height: 22px;
+  --text-body-lg: 18px;
+  --text-body-lg--line-height: 28px;
+  --text-body-md: 16px;
+  --text-body-md--line-height: 24px;
+  --text-body-sm: 14px;
+  --text-body-sm--line-height: 20px;
+  --text-label-md: 14px;
+  --text-label-md--line-height: 20px;
+  --text-label-sm: 13px;
+  --text-label-sm--line-height: 18px;
+  --text-label-sm--letter-spacing: 0.006em;
+  --text-overline: 11px;
+  --text-overline--line-height: 16px;
+  --text-overline--letter-spacing: 0.08em;
+
+  --font-weight-display-lg: 700;
+  --font-weight-display-md: 700;
+  --font-weight-headline-lg: 700;
+  --font-weight-headline-sm: 600;
+  --font-weight-title-md: 600;
+  --font-weight-body-lg: 400;
+  --font-weight-body-md: 400;
+  --font-weight-body-sm: 400;
+  --font-weight-label-md: 600;
+  --font-weight-label-sm: 500;
+  --font-weight-overline: 700;
+
+  --radius-sm: 0.25rem;
+  --radius-DEFAULT: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+
+  --shadow-card: 0 1px 2px 0 rgba(10, 22, 70, 0.04), 0 10px 24px -12px rgba(10, 22, 70, 0.14);
+  --shadow-card-hover: 0 2px 4px 0 rgba(10, 22, 70, 0.05), 0 16px 32px -12px rgba(10, 22, 70, 0.18);
+  --shadow-panel: 0 1px 3px 0 rgba(10, 22, 70, 0.05), 0 20px 40px -20px rgba(10, 22, 70, 0.16);
+  --shadow-pop: 0 4px 12px -2px rgba(10, 22, 70, 0.12), 0 2px 6px -2px rgba(10, 22, 70, 0.08);
+  /* App shell header: a crisp, mostly-downward lift so the bar floats a hair
+     above the scrolling content instead of being ruled off with a border. */
+  --shadow-header: 0 1px 2px 0 rgba(10, 22, 70, 0.04), 0 6px 20px -12px rgba(10, 22, 70, 0.16);
+
+  --spacing-sidebar-width: 260px;
+  --spacing-sidebar-rail-width: 72px;
+  --spacing-container-padding: 2rem;
+  --spacing-gutter: 1.5rem;
+  --spacing-card-gap: 1rem;
+  --spacing-stack-sm: 0.5rem;
+  --spacing-stack-md: 1rem;
+  --spacing-stack-lg: 1.5rem;
+
+  --breakpoint-desktop: 1200px;
+
+  --animate-overlay-in: overlay-in 0.15s ease-out;
+  --animate-modal-in: modal-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+
+  --duration-instant: 100ms;
+  --duration-fast: 150ms;
+  --duration-base: 220ms;
+  --duration-slow: 350ms;
+  --stagger-increment: 35ms;
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes three-body-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes three-body-wobble-1 {
+  0%,
+  100% {
+    transform: translateY(0%) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-66%) scale(0.65);
+    opacity: 0.8;
+  }
+}
+
+@keyframes three-body-wobble-2 {
+  0%,
+  100% {
+    transform: translateY(0%) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(66%) scale(0.65);
+    opacity: 0.8;
+  }
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-background);
+    color: var(--color-on-background);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Keeps headings from wrapping to an orphaned single word. */
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  /* Tailwind's Preflight resets buttons to the native `cursor: default`
+     instead of `pointer`. Restore the pointer cursor for enabled buttons
+     and custom button-role elements so all clickable controls read as
+     clickable. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  /* CR-06: a flat --color-sidebar fill sat too close in visual weight to the
+     white shell and the accent-blue buttons once the base blue lightened,
+     so the sidebar read as a flat block instead of a receding shell. A
+     top-to-bottom gradient into --color-sidebar-deep restores that depth
+     without darkening --color-primary itself (buttons/badges/headings stay
+     on the lighter Azure Vellum tone). */
+  .bg-sidebar-gradient {
+    background: linear-gradient(180deg, var(--color-sidebar) 0%, var(--color-sidebar-deep) 100%);
+  }
+
+  /* Thin, app-tinted scrollbar for popover/listbox content — otherwise the
+     OS-drawn scrollbar (esp. Windows' wide arrow-button track) overwhelms
+     narrow columns like the time picker's hour/minute lists. */
+  .thin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-outline-variant) transparent;
+  }
+
+  /* Branded loader: three orbiting dots that wobble as the group spins.
+     Sized via the `--three-body-size` custom property (default 35px);
+     colour follows --color-accent. */
+  .three-body {
+    --three-body-size: 35px;
+    --three-body-speed: 0.8s;
+    position: relative;
+    display: inline-block;
+    height: var(--three-body-size);
+    width: var(--three-body-size);
+    animation: three-body-spin calc(var(--three-body-speed) * 2.5) infinite linear;
+  }
+
+  .three-body__dot {
+    position: absolute;
+    height: 100%;
+    width: 30%;
+  }
+
+  .three-body__dot::after {
+    content: '';
+    position: absolute;
+    height: 0%;
+    width: 100%;
+    padding-bottom: 100%;
+    background-color: var(--color-accent);
+    border-radius: 50%;
+  }
+
+  .three-body__dot:nth-child(1) {
+    bottom: 5%;
+    left: 0;
+    transform: rotate(60deg);
+    transform-origin: 50% 85%;
+  }
+
+  .three-body__dot:nth-child(1)::after {
+    bottom: 0;
+    left: 0;
+    animation: three-body-wobble-1 var(--three-body-speed) infinite ease-in-out;
+    animation-delay: calc(var(--three-body-speed) * -0.3);
+  }
+
+  .three-body__dot:nth-child(2) {
+    bottom: 5%;
+    right: 0;
+    transform: rotate(-60deg);
+    transform-origin: 50% 85%;
+  }
+
+  .three-body__dot:nth-child(2)::after {
+    bottom: 0;
+    left: 0;
+    animation: three-body-wobble-1 var(--three-body-speed) infinite calc(var(--three-body-speed) * -0.15) ease-in-out;
+  }
+
+  .three-body__dot:nth-child(3) {
+    bottom: -5%;
+    left: 0;
+    transform: translateX(116.666%);
+  }
+
+  .three-body__dot:nth-child(3)::after {
+    top: 0;
+    left: 0;
+    animation: three-body-wobble-2 var(--three-body-speed) infinite ease-in-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .three-body,
+    .three-body__dot::after {
+      animation: none;
+    }
+
+    .three-body__dot::after {
+      opacity: 0.8;
+    }
+  }
+
+  .thin-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .thin-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .thin-scrollbar::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--color-outline-variant) 70%, transparent);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-radius: var(--radius-full);
+  }
+
+  .thin-scrollbar:hover::-webkit-scrollbar-thumb {
+    background-color: var(--color-outline-variant);
+    background-clip: padding-box;
+  }
+
+  .thin-scrollbar::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Sidebar nav scrollbar (Heritage Rail). Hidden at rest so it never competes
+     with the nav on the Azure gradient; a translucent white thumb fades in on
+     hover or keyboard focus. `scrollbar-gutter: stable` reserves the track width
+     up front so nav items don't reflow when the bar appears. */
+  .sidebar-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    scrollbar-gutter: stable;
+    transition: scrollbar-color var(--duration-fast) ease-out;
+  }
+
+  .sidebar-scrollbar:hover,
+  .sidebar-scrollbar:focus-within {
+    scrollbar-color: rgb(255 255 255 / 0.34) transparent;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar {
+    width: 9px;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-radius: var(--radius-full);
+    transition: background-color var(--duration-fast) ease-out;
+  }
+
+  .sidebar-scrollbar:hover::-webkit-scrollbar-thumb,
+  .sidebar-scrollbar:focus-within::-webkit-scrollbar-thumb {
+    background-color: rgb(255 255 255 / 0.32);
+    background-clip: padding-box;
+  }
+
+  .sidebar-scrollbar:hover::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(255 255 255 / 0.46);
+    background-clip: padding-box;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar-scrollbar,
+    .sidebar-scrollbar::-webkit-scrollbar-thumb {
+      transition: none;
+    }
+  }
+
+  /* Short viewports (small laptops, split screens): tighten the sidebar's
+     vertical rhythm so the nav needs less scrolling before the footer. */
+  @media (max-height: 720px) {
+    .sidebar-brand {
+      padding-top: 0.875rem;
+      padding-bottom: 0.875rem;
+    }
+
+    .sidebar-group {
+      padding-top: 0.625rem;
+    }
+  }
+
+  /*
+   * WCAG 2.5.5-compliant touch target for icon-only buttons whose visual
+   * size must stay small (table row actions, toolbar icon buttons) — grows
+   * the *hit area* to 44x44px via an invisible pseudo-element instead of
+   * padding, so dense table rows and toolbars don't inflate. Apply to a
+   * `relative` (or default-positioned) button alongside its existing
+   * padding/size classes.
+   */
+  .tap-target {
+    position: relative;
+  }
+
+  .tap-target::before {
+    content: '';
+    position: absolute;
+    inset: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+
+  /*
+   * Reusable page-background system. Layers a few soft, brand-tinted
+   * gradient blooms over a fine dot grid behind the app's "empty" surface
+   * areas — the AppShell content region and every full-screen auth
+   * page — so they read as intentional depth rather than flat blank space.
+   * The layer is `position: fixed` (not `background-attachment: fixed`) so
+   * it's a single compositor layer that never repaints while content
+   * scrolls. Deliberately NOT `isolation: isolate` on the host — that would
+   * trap the pseudo-element's z-index:-1 inside a local stacking context,
+   * so the whole host (e.g. AppShell's <main>, which comes after the
+   * sidebar in DOM order) would paint above the sidebar instead of behind
+   * it. Left at the root stacking context, -1 sorts behind every normal
+   * (z-index: auto) element in the app, sidebar included.
+   */
+  .bg-app-canvas {
+    --canvas-base: var(--color-background);
+  }
+
+  .bg-app-canvas::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-color: var(--canvas-base);
+    background-image:
+      radial-gradient(900px circle at 6% -8%, rgba(20, 118, 214, 0.16), transparent 62%),
+      radial-gradient(820px circle at 104% 6%, rgba(45, 117, 180, 0.13), transparent 58%),
+      radial-gradient(760px circle at -4% 100%, rgba(45, 117, 180, 0.11), transparent 58%),
+      radial-gradient(rgba(45, 117, 180, 0.09) 1.25px, transparent 1.25px);
+    background-repeat: no-repeat, no-repeat, no-repeat, repeat;
+    background-position: top left, top right, bottom left, top left;
+    background-size: auto, auto, auto, 26px 26px;
+  }
+
+  /* For screens that previously sat on --color-surface-container-low
+     (auth pages), so the white card still pops the same amount it always
+     did. */
+  .bg-app-canvas--dim {
+    --canvas-base: var(--color-surface-container-low);
+  }
+
+  /*
+   * For AppShell's <main>: because the pseudo-element above is
+   * `position: fixed`, its background-image coordinates are always
+   * relative to the FULL viewport, not to <main>'s own box — even though
+   * <main> only occupies the area right of the 260px sidebar and below the
+   * header. Left as-is, the left-anchored blooms' peaks fall underneath
+   * that chrome and only their faint fade reaches into the visible content
+   * area. --shell-offset-x shifts the two left-anchored blooms right by
+   * however much of the sidebar is actually docked — the collapsed icon
+   * rail's width from the `md` breakpoint (tablet), the full sidebar's
+   * width from `desktop` (below `md` it's an off-canvas drawer and <main>
+   * spans the full width already) — and the vertical anchors are nudged
+   * down to clear the (opaque) header band. The bottom-left bloom
+   * additionally flips its corner-crop sign (+4% instead of auth's -4%) —
+   * subtracting still landed its anchor a few px behind the sidebar even
+   * after adding --shell-offset-x, which hid its peak entirely and left
+   * only a sliver of fade visible.
+   */
+  .bg-app-canvas--shell {
+    --shell-offset-x: 0px;
+  }
+
+  @media (min-width: 768px) {
+    .bg-app-canvas--shell {
+      --shell-offset-x: var(--spacing-sidebar-rail-width);
+    }
+  }
+
+  @media (min-width: 1200px) {
+    .bg-app-canvas--shell {
+      --shell-offset-x: var(--spacing-sidebar-width);
+    }
+  }
+
+  .bg-app-canvas--shell::before {
+    background-image:
+      radial-gradient(855px circle at calc(6% + var(--shell-offset-x)) 6%, rgba(20, 118, 214, 0.07), transparent 68%),
+      radial-gradient(738px circle at 104% 14%, rgba(45, 117, 180, 0.07), transparent 58%),
+      radial-gradient(684px circle at calc(4% + var(--shell-offset-x)) 100%, rgba(45, 117, 180, 0.07), transparent 58%);
+    /* No dot grid here, unlike the auth-page base rule above: on the dense,
+       card-heavy shell it repeated across every gutter and touched every
+       card and floating control's edge, which read as the card being cut
+       out of a distinctly patterned surface rather than sitting on the
+       page. The corner blooms don't have that problem — they only ever
+       reach a true viewport corner, never a card edge directly — so they're
+       what's left. Most of <main>'s real estate is opaque white cards, so
+       even these are only glimpsed through thin gutters (container
+       padding, card gaps, the strip past the last card); keep them at this
+       opacity or fainter, not bolder, on this surface. The top-left bloom
+       runs a wider radius with a slower falloff than the other two — a
+       tighter circle there read as a hard-edged "blob" instead of an
+       ambient tint — but keep its radius reined in: pushed much past this,
+       it starts washing color across the open gutter above cards on pages
+       with more vertical space before the first card (e.g. Alumni's "Add
+       New" row), which makes the card look tinted instead of neutral. */
+    background-size: auto, auto, auto;
+  }
+
+  @media (forced-colors: active) {
+    .bg-app-canvas::before {
+      display: none;
+    }
+  }
+}
+
+@media print {
+  .bg-app-canvas::before {
+    display: none;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  [data-print-region],
+  [data-print-region] * {
+    visibility: visible;
+  }
+
+  /* The rest of the page is hidden but still occupies layout space, so lift
+     the printable region out of flow to start it at the top of page 1. */
+  [data-print-region] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+  }
+
+  /* Ancestors of the region — a Modal's overlay and panel, say — drop the
+     positioning, clipping and height caps that are correct on screen but would
+     otherwise trap the region inside a viewport-sized scroll box. Note the
+     `position: static` is load-bearing: it's what lets the absolute region
+     above resolve against the page rather than the overlay.
+
+     This lives here, keyed off the marker attribute, so that no shared
+     component has to know it might be printed. */
+  body :has([data-print-region]) {
+    position: static;
+    overflow: visible;
+    max-height: none;
+    background: none;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  /* @bottom-center page-number support varies by browser (works in
+     Chromium print preview); it degrades to no visible number
+     elsewhere without breaking layout. */
+  @page {
+    margin: 1.5cm;
+    @bottom-center {
+      content: "Page " counter(page) " of " counter(pages);
+      font-size: 9pt;
+      color: #444750;
+    }
+  }
+}
