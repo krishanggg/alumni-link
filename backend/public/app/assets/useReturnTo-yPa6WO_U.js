@@ -1,0 +1,1 @@
+import{F as e,P as t}from"./index-Bi_N6nfE.js";function n(e){let n=t();return{returnTo:`${n.pathname}${n.search}`,returnLabel:e}}function r(){let n=t(),r=e(),{returnTo:i,returnLabel:a}=n.state??{};return{returnTo:i,returnLabel:a,goBack:i?()=>r(i):void 0}}export{r as n,n as t};

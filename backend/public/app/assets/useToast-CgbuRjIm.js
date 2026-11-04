@@ -1,0 +1,1 @@
+import{o as e}from"./jsx-runtime-CZcjcDnw.js";import{$t as t}from"./icons-CY3TycZS.js";import{k as n}from"./index-Bi_N6nfE.js";var r=e(t(),1);function i(){let e=(0,r.useContext)(n);if(!e)throw Error(`useToast must be used within a ToastProvider`);return e}export{i as t};

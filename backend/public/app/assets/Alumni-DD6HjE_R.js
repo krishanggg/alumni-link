@@ -1,0 +1,1 @@
+var e=[{value:`student`,label:`Student`},{value:`self_employed`,label:`Self Employed`},{value:`unemployed`,label:`Unemployed`},{value:`employed`,label:`Employed`},{value:`retired`,label:`Retired`}];export{e as t};

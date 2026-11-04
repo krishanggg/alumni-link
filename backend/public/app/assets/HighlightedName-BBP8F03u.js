@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-CZcjcDnw.js";var t=e();function n({children:e}){return(0,t.jsx)(`strong`,{className:`font-medium text-on-surface`,children:e})}export{n as t};

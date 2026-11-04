@@ -1,0 +1,1 @@
+function e(e){return[e.first_name,e.middle_name,e.last_name,e.suffix].filter(Boolean).join(` `).trim()}function t(e){let t=[e.first_name,e.middle_name,e.suffix].filter(Boolean).join(` `);return`${e.last_name}, ${t}`}export{t as n,e as t};
