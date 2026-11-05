@@ -16,7 +16,7 @@ return new class extends Migration
             $table->boolean('account_activity')->default(true);
             $table->boolean('alumni_record_updates')->default(true);
             $table->boolean('system_announcements')->default(true);
-            $table->boolean('report_completion')->default(false);
+            $table->boolean('report_completion')->default(true);
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');

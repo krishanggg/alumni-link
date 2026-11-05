@@ -27,9 +27,12 @@ export async function getExpoPushToken(): Promise<string | null> {
     const Notifications = await import('expo-notifications');
 
     if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.DEFAULT,
+      // Use a dedicated channel so installs that already created Expo's
+      // default channel at DEFAULT importance still get heads-up alerts.
+      await Notifications.setNotificationChannelAsync('alumni-alerts', {
+        name: 'AlumniLink alerts',
+        importance: Notifications.AndroidImportance.MAX,
+        sound: 'default',
       });
     }
 

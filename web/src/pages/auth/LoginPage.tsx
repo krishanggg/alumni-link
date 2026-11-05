@@ -99,7 +99,7 @@ function LoginPage() {
             <p className="mt-1 text-body-md text-on-surface-variant">Please log in to your account.</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate autoComplete="off">
             <TextField
               id="login"
               label="Email or Username"
@@ -113,7 +113,7 @@ function LoginPage() {
                 }
               }}
               placeholder="Enter your email or username"
-              autoComplete="username"
+              autoComplete="off"
               aria-invalid={Boolean(fieldErrors.login)}
               error={fieldErrors.login}
             />
@@ -140,7 +140,7 @@ function LoginPage() {
                       : 'border-outline-variant focus:border-accent focus:ring-accent/20'
                   }`}
                   placeholder="Enter your password"
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   aria-invalid={Boolean(fieldErrors.password)}
                   aria-describedby={fieldErrors.password ? 'login-password-error' : undefined}
                 />

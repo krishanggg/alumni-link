@@ -43,6 +43,9 @@ class ExpoPushService
             'title' => $title,
             'body' => $body,
             'data' => $data,
+            // Keep Android on the high-importance channel configured by the
+            // mobile app; the platform's default channel may be silent.
+            'channelId' => 'alumni-alerts',
             // Without this, Android delivers at "normal" FCM priority, which
             // gets deferred while the device is idle/Doze-restricted — the
             // message can sit for minutes to hours before the OS wakes the

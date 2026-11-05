@@ -2,7 +2,9 @@ const fs = require('fs');
 const path = require('path');
 
 const isLocalDev = process.env.ALUMNILINK_LOCAL_DEV === '1';
+
 const localGoogleServices = path.join(__dirname, 'google-services.json');
+
 const googleServicesFile = process.env.GOOGLE_SERVICES_JSON
   ?? (fs.existsSync(localGoogleServices) ? './google-services.json' : undefined);
 
@@ -14,9 +16,11 @@ module.exports = {
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
+
     ios: {
       supportsTablet: true,
     },
+
     android: {
       adaptiveIcon: {
         backgroundColor: '#E6F4FE',
@@ -24,12 +28,27 @@ module.exports = {
         backgroundImage: './assets/android-icon-background.png',
         monochromeImage: './assets/android-icon-monochrome.png',
       },
-      package: isLocalDev ? 'com.app.alumnilink.dev' : 'com.app.alumnilink',
+
+      package: isLocalDev
+        ? 'com.app.alumnilink.dev'
+        : 'com.app.alumnilink',
+
+      runtimeVersion: {
+        policy: 'appVersion',
+      },
+
       ...(googleServicesFile ? { googleServicesFile } : {}),
     },
+
+    // Expo Over-the-Air Updates
+    updates: {
+      url: 'https://u.expo.dev/26ea7153-81c3-4648-a474-8ed18376e0d8',
+    },
+
     web: {
       favicon: './assets/favicon.png',
     },
+
     plugins: [
       '@react-native-community/datetimepicker',
       'expo-sharing',
@@ -46,11 +65,13 @@ module.exports = {
         },
       ],
     ],
+
     extra: {
       eas: {
-        projectId: '61bd76ae-58e5-4028-8f16-003db5de4515',
+        projectId: '26ea7153-81c3-4648-a474-8ed18376e0d8',
       },
     },
-    owner: 'pauls-organization',
+
+    owner: 'shang18s-team',
   },
 };

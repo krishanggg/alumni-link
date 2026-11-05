@@ -6,7 +6,6 @@ namespace App\Notifications;
 
 use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -15,7 +14,7 @@ use Illuminate\Notifications\Notification;
  * notification preferences — unlike the other four categories, a user who
  * requested a reset must receive it regardless of their toggle state.
  */
-class PasswordResetNotification extends Notification implements ShouldQueue
+class PasswordResetNotification extends Notification
 {
     use Queueable;
 

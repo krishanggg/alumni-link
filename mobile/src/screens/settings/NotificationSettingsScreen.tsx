@@ -80,7 +80,7 @@ function NotificationSettingsScreen() {
     >
       <Text style={styles.sectionTitle}>Notification Preferences</Text>
       <Text style={styles.subtitle}>
-        Choose which email notifications you receive.{'\n'}
+        Choose which email and push notifications you receive.{'\n'}
         Changes are saved automatically.
       </Text>
 

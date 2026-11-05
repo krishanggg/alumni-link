@@ -20,7 +20,7 @@ class NotificationPreference extends Model
         'account_activity' => true,
         'alumni_record_updates' => true,
         'system_announcements' => true,
-        'report_completion' => false,
+        'report_completion' => true,
         'feedback' => true,
     ];
 
