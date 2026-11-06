@@ -45,28 +45,41 @@ class AnnouncementService
             return ! $a->views->contains('user_id', $user->id);
         })->count();
 
-        return ['announcements' => $announcements, 'unviewed_count' => $unviewedCount];
+        return [
+            'announcements' => $announcements,
+            'unviewed_count' => $unviewedCount,
+        ];
     }
 
-    public function mine(User $user, ?string $type, int $perPage, ?string $search = null): ?LengthAwarePaginator
-    {
+    public function mine(
+        User $user,
+        ?string $type,
+        int $perPage,
+        ?string $search = null
+    ): ?LengthAwarePaginator {
         if (! $user->alumni_id) {
             return null;
         }
 
         $alumni = Alumni::find($user->alumni_id);
 
-        // Filtering by type (and search) happens here rather than in the client so the
-        // paginator counts only matching rows — filtering an already-fetched
-        // page client-side would leave the empty state and load-more control
-        // reasoning about the unfiltered set, so a type with matches only on
-        // page 2 would read as "none".
-        return Announcement::whereIn('status', [AnnouncementStatus::Published, AnnouncementStatus::Expired])
+        return Announcement::whereIn('status', [
+                AnnouncementStatus::Published,
+                AnnouncementStatus::Expired,
+            ])
             ->whereNull('deleted_at')
-            ->when($type !== null, fn ($q) => $q->where('type', $type))
-            ->when($search !== null && $search !== '', fn ($q) => $q->where(
-                fn ($qq) => $qq->where('title', 'like', "%{$search}%")->orWhere('message', 'like', "%{$search}%")
-            ))
+            ->when(
+                $type !== null,
+                fn ($q) => $q->where('type', $type)
+            )
+            ->when(
+                $search !== null && $search !== '',
+                fn ($q) => $q->where(
+                    fn ($qq) => $qq
+                        ->where('title', 'like', "%{$search}%")
+                        ->orWhere('message', 'like', "%{$search}%")
+                )
+            )
             ->where(function ($q) use ($user) {
                 $q->whereNull('school_id')
                     ->orWhere('school_id', $user->school_id);
@@ -89,20 +102,32 @@ class AnnouncementService
     {
         return Alumni::confirmed()
             ->whereNull('deleted_at')
-            ->when($user?->isSchoolAdmin(), fn ($query) => $query->where('school_id', $user->school_id))
-            ->when($user?->isSuperAdmin() && $schoolId !== null, fn ($query) => $query->where('school_id', $schoolId))
+            ->when(
+                $user?->isSchoolAdmin(),
+                fn ($query) => $query->where('school_id', $user->school_id)
+            )
+            ->when(
+                $user?->isSuperAdmin() && $schoolId !== null,
+                fn ($query) => $query->where('school_id', $schoolId)
+            )
             ->distinct('graduation_year')
             ->orderBy('graduation_year', 'desc')
             ->pluck('graduation_year');
     }
 
     /**
-     * @param  array<string, mixed>  $filters
+     * @param array<string, mixed> $filters
      * @return LengthAwarePaginator<int, Announcement>|Collection<int, Announcement>
      */
-    public function list(array $filters, ?User $user): LengthAwarePaginator|Collection
-    {
-        $query = Announcement::with(['batches', 'school', 'creator']);
+    public function list(
+        array $filters,
+        ?User $user
+    ): LengthAwarePaginator|Collection {
+        $query = Announcement::with([
+            'batches',
+            'school',
+            'creator',
+        ]);
 
         if ($user?->isSchoolAdmin()) {
             $query->where('school_id', $user->school_id);
@@ -115,10 +140,11 @@ class AnnouncementService
         if (! empty($filters['status']) && $status !== 'all') {
             $query->where('status', $status);
         } elseif (empty($filters['include_archived'])) {
-            // Archiving is admin-only retention. An omitted filter and an
-            // explicit 'all' both mean "every status except archived"; reaching
-            // archived takes either status=archived or an explicit opt-in.
-            $query->where('status', '!=', AnnouncementStatus::Archived);
+            $query->where(
+                'status',
+                '!=',
+                AnnouncementStatus::Archived
+            );
         }
 
         if (! empty($filters['type'])) {
@@ -126,12 +152,13 @@ class AnnouncementService
         }
 
         if (! empty($filters['q'])) {
-            $query->where('title', 'like', '%'.$filters['q'].'%');
+            $query->where(
+                'title',
+                'like',
+                '%'.$filters['q'].'%'
+            );
         }
 
-        // Admin view: newest first regardless of status, so a just-created
-        // draft (published_at is null) lands on page one rather than being
-        // buried under every published announcement.
         $sortBy = $filters['sort_by'] ?? 'created_at';
 
         $query->orderBy(
@@ -143,18 +170,47 @@ class AnnouncementService
             return Pagination::boundedAll($query);
         }
 
-        return $query->paginate(Pagination::clampPerPage((int) ($filters['per_page'] ?? 15), 15));
+        return $query->paginate(
+            Pagination::clampPerPage(
+                (int) ($filters['per_page'] ?? 15),
+                15
+            )
+        );
     }
 
     /**
-     * @param  array<string, mixed>  $attributes
-     * @param  array<int, int>  $targetBatches
+     * Creates an announcement.
+     *
+     * If created directly as Published, notify recipients
+     * only after the database transaction succeeds.
+     *
+     * Draft announcements do not trigger notifications.
+     *
+     * @param array<string, mixed> $attributes
+     * @param array<int, int> $targetBatches
      */
-    public function create(array $attributes, bool $targetAllBatches, array $targetBatches, ?User $user): Announcement
-    {
-        $isPublished = ($attributes['status'] ?? null) === AnnouncementStatus::Published->value;
+    public function create(
+        array $attributes,
+        bool $targetAllBatches,
+        array $targetBatches,
+        ?User $user
+    ): Announcement {
+        $status = $attributes['status'] ?? null;
 
-        return DB::transaction(function () use ($attributes, $targetAllBatches, $targetBatches, $user, $isPublished) {
+        if ($status instanceof AnnouncementStatus) {
+            $status = $status->value;
+        }
+
+        $isPublished =
+            $status === AnnouncementStatus::Published->value;
+
+        $announcement = DB::transaction(function () use (
+            $attributes,
+            $targetAllBatches,
+            $targetBatches,
+            $user,
+            $isPublished
+        ) {
             if ($user?->isSchoolAdmin()) {
                 $attributes['school_id'] = $user->school_id;
             }
@@ -165,21 +221,70 @@ class AnnouncementService
                 'published_at' => $isPublished ? now() : null,
             ]);
 
-            $this->syncBatches($announcement, $targetAllBatches, $targetBatches);
+            $this->syncBatches(
+                $announcement,
+                $targetAllBatches,
+                $targetBatches
+            );
 
             return $announcement;
         });
+
+        // FIX: Direct publishing now triggers notifications.
+        // Dispatch happens after the transaction succeeds.
+        if ($isPublished) {
+            $this->notifyRecipients($announcement);
+        }
+
+        return $announcement;
     }
 
     /**
-     * @param  array<string, mixed>  $attributes
-     * @param  array<int, int>  $targetBatches
+     * Updates an existing announcement.
+     *
+     * Notifications are sent only when an announcement
+     * transitions from a non-published status to Published.
+     *
+     * Editing an already published announcement does not
+     * send duplicate notifications.
+     *
+     * @param array<string, mixed> $attributes
+     * @param array<int, int> $targetBatches
      */
-    public function update(Announcement $announcement, array $attributes, bool $targetAllBatches, array $targetBatches, ?User $user): Announcement
-    {
-        DB::transaction(function () use ($announcement, $attributes, $targetAllBatches, $targetBatches, $user) {
+    public function update(
+        Announcement $announcement,
+        array $attributes,
+        bool $targetAllBatches,
+        array $targetBatches,
+        ?User $user
+    ): Announcement {
+        $wasPublished =
+            $announcement->status === AnnouncementStatus::Published;
+
+        DB::transaction(function () use (
+            $announcement,
+            $attributes,
+            $targetAllBatches,
+            $targetBatches,
+            $user,
+            $wasPublished
+        ) {
             if ($user?->isSchoolAdmin()) {
                 $attributes['school_id'] = $user->school_id;
+            }
+
+            $newStatus = $attributes['status'] ?? null;
+
+            if ($newStatus instanceof AnnouncementStatus) {
+                $newStatus = $newStatus->value;
+            }
+
+            // Set the publication timestamp on first publication.
+            if (
+                ! $wasPublished &&
+                $newStatus === AnnouncementStatus::Published->value
+            ) {
+                $attributes['published_at'] = now();
             }
 
             $announcement->update([
@@ -187,23 +292,54 @@ class AnnouncementService
                 'updated_by' => $user?->id,
             ]);
 
-            $this->syncBatches($announcement, $targetAllBatches, $targetBatches);
+            $this->syncBatches(
+                $announcement,
+                $targetAllBatches,
+                $targetBatches
+            );
         });
+
+        $announcement->refresh();
+
+        $isNowPublished =
+            $announcement->status === AnnouncementStatus::Published;
+
+        // Notify only when the announcement becomes published.
+        if (! $wasPublished && $isNowPublished) {
+            $this->notifyRecipients($announcement);
+        }
 
         return $announcement;
     }
 
     /**
+     * Publishes an existing draft or unpublished announcement.
+     *
      * @throws BusinessRuleException
      */
     public function publish(Announcement $announcement): void
     {
         if ($announcement->status === AnnouncementStatus::Archived) {
-            throw new BusinessRuleException('Archived announcements must be restored before they can be published.', 422);
+            throw new BusinessRuleException(
+                'Archived announcements must be restored before they can be published.',
+                422
+            );
         }
 
-        if ($announcement->type === AnnouncementType::Event && $announcement->target_date && $announcement->target_date->isPast()) {
-            throw new BusinessRuleException('Cannot publish an event with a past target date.', 422);
+        if (
+            $announcement->type === AnnouncementType::Event &&
+            $announcement->target_date &&
+            $announcement->target_date->isPast()
+        ) {
+            throw new BusinessRuleException(
+                'Cannot publish an event with a past target date.',
+                422
+            );
+        }
+
+        // Prevent duplicate notifications from repeated publishing.
+        if ($announcement->status === AnnouncementStatus::Published) {
+            return;
         }
 
         $announcement->update([
@@ -215,20 +351,37 @@ class AnnouncementService
     }
 
     /**
-     * Fans out to every approved alumnus the announcement targets — same
-     * school/all-schools and batch-year rules `active()` uses to decide
-     * whether a given user should see the announcement at all.
+     * Sends announcement notifications to approved alumni
+     * who match the announcement's school and batch targets.
      */
     private function notifyRecipients(Announcement $announcement): void
     {
         $recipients = User::where('role', UserRole::Alumni)
             ->where('account_status', AccountStatus::Approved)
             ->whereNotNull('alumni_id')
-            ->when($announcement->school_id !== null, fn ($q) => $q->where('school_id', $announcement->school_id))
-            ->when(! $announcement->target_all_batches, function ($q) use ($announcement) {
-                $years = $announcement->batches()->pluck('graduation_year');
-                $q->whereHas('alumni', fn ($qa) => $qa->whereIn('graduation_year', $years));
-            })
+            ->when(
+                $announcement->school_id !== null,
+                fn ($q) => $q->where(
+                    'school_id',
+                    $announcement->school_id
+                )
+            )
+            ->when(
+                ! $announcement->target_all_batches,
+                function ($q) use ($announcement) {
+                    $years = $announcement
+                        ->batches()
+                        ->pluck('graduation_year');
+
+                    $q->whereHas(
+                        'alumni',
+                        fn ($qa) => $qa->whereIn(
+                            'graduation_year',
+                            $years
+                        )
+                    );
+                }
+            )
             ->get();
 
         foreach ($recipients as $recipient) {
@@ -248,10 +401,16 @@ class AnnouncementService
     public function unpublish(Announcement $announcement): void
     {
         if ($announcement->status === AnnouncementStatus::Archived) {
-            throw new BusinessRuleException('Archived announcements must be restored before they can be unpublished.', 422);
+            throw new BusinessRuleException(
+                'Archived announcements must be restored before they can be unpublished.',
+                422
+            );
         }
 
-        $announcement->update(['status' => AnnouncementStatus::Draft, 'published_at' => null]);
+        $announcement->update([
+            'status' => AnnouncementStatus::Draft,
+            'published_at' => null,
+        ]);
     }
 
     /**
@@ -260,22 +419,33 @@ class AnnouncementService
     public function expire(Announcement $announcement): void
     {
         if ($announcement->status === AnnouncementStatus::Archived) {
-            throw new BusinessRuleException('Archived announcements must be restored before they can be expired.', 422);
+            throw new BusinessRuleException(
+                'Archived announcements must be restored before they can be expired.',
+                422
+            );
         }
 
-        $announcement->update(['status' => AnnouncementStatus::Expired]);
+        $announcement->update([
+            'status' => AnnouncementStatus::Expired,
+        ]);
     }
 
     /**
      * @throws BusinessRuleException
      */
-    public function archive(Announcement $announcement, ?int $actorId): bool
-    {
+    public function archive(
+        Announcement $announcement,
+        ?int $actorId
+    ): bool {
         if ($announcement->status === AnnouncementStatus::Archived) {
-            throw new BusinessRuleException('Announcement is already archived.', 422);
+            throw new BusinessRuleException(
+                'Announcement is already archived.',
+                422
+            );
         }
 
-        $wasPublished = $announcement->status === AnnouncementStatus::Published;
+        $wasPublished =
+            $announcement->status === AnnouncementStatus::Published;
 
         $announcement->update([
             'status' => AnnouncementStatus::Archived,
@@ -289,14 +459,17 @@ class AnnouncementService
     /**
      * @throws BusinessRuleException
      */
-    public function restoreFromArchive(Announcement $announcement, ?int $actorId): void
-    {
+    public function restoreFromArchive(
+        Announcement $announcement,
+        ?int $actorId
+    ): void {
         if ($announcement->status !== AnnouncementStatus::Archived) {
-            throw new BusinessRuleException('Announcement is not archived.', 422);
+            throw new BusinessRuleException(
+                'Announcement is not archived.',
+                422
+            );
         }
 
-        // Restoring returns the announcement to draft so an admin has to
-        // deliberately publish it again rather than silently re-exposing it.
         $announcement->update([
             'status' => AnnouncementStatus::Draft,
             'archived_at' => null,
@@ -305,15 +478,19 @@ class AnnouncementService
         ]);
     }
 
-    public function markViewed(Announcement $announcement, ?int $userId): void
-    {
-        // Keep not-found handling here so every caller shares the visibility boundary.
+    public function markViewed(
+        Announcement $announcement,
+        ?int $userId
+    ): void {
         if ($userId === null) {
             abort(404);
         }
 
         $user = User::find($userId);
-        $alumni = $user?->alumni_id !== null ? Alumni::find($user->alumni_id) : null;
+
+        $alumni = $user?->alumni_id !== null
+            ? Alumni::find($user->alumni_id)
+            : null;
 
         if ($user === null || $alumni === null) {
             abort(404);
@@ -333,15 +510,20 @@ class AnnouncementService
     }
 
     /**
-     * @param  array<int, int>  $targetBatches
+     * @param array<int, int> $targetBatches
      */
-    private function syncBatches(Announcement $announcement, bool $targetAllBatches, array $targetBatches): void
-    {
+    private function syncBatches(
+        Announcement $announcement,
+        bool $targetAllBatches,
+        array $targetBatches
+    ): void {
         $announcement->batches()->delete();
 
         if (! $targetAllBatches) {
             foreach ($targetBatches as $year) {
-                $announcement->batches()->create(['graduation_year' => $year]);
+                $announcement->batches()->create([
+                    'graduation_year' => $year,
+                ]);
             }
         }
     }

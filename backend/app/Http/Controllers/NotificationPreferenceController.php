@@ -22,36 +22,40 @@ class NotificationPreferenceController extends Controller
         );
 
         return response()->json([
-            'preferences' => [
-                'account_activity' => $prefs->account_activity,
-                'alumni_record_updates' => $prefs->alumni_record_updates,
-                'system_announcements' => $prefs->system_announcements,
-                'report_completion' => $prefs->report_completion,
-                'feedback' => $prefs->feedback,
-            ],
+            'preferences' => $this->formatPreferences($prefs),
         ]);
     }
 
-    public function update(UpdateNotificationPreferenceRequest $request): JsonResponse
-    {
+    public function update(
+        UpdateNotificationPreferenceRequest $request
+    ): JsonResponse {
         $this->authorize('viewAny', Alumni::class);
 
-        $validated = $request->validated();
-
-        $prefs = NotificationPreference::updateOrCreate(
+        // Initialize all preferences with their defaults if needed.
+        $prefs = NotificationPreference::firstOrCreate(
             ['user_id' => $request->user()->id],
-            $validated
+            NotificationPreference::DEFAULTS
         );
+
+        // Update only the preferences provided by the mobile app.
+        $prefs->fill($request->validated());
+        $prefs->save();
 
         return response()->json([
             'message' => 'Notification preferences updated.',
-            'preferences' => [
-                'account_activity' => $prefs->account_activity,
-                'alumni_record_updates' => $prefs->alumni_record_updates,
-                'system_announcements' => $prefs->system_announcements,
-                'report_completion' => $prefs->report_completion,
-                'feedback' => $prefs->feedback,
-            ],
+            'preferences' => $this->formatPreferences($prefs),
         ]);
+    }
+
+    private function formatPreferences(
+        NotificationPreference $prefs
+    ): array {
+        return [
+            'account_activity' => $prefs->account_activity,
+            'alumni_record_updates' => $prefs->alumni_record_updates,
+            'system_announcements' => $prefs->system_announcements,
+            'report_completion' => $prefs->report_completion,
+            'feedback' => $prefs->feedback,
+        ];
     }
 }
