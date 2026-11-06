@@ -39,91 +39,179 @@ class AuthController extends Controller
         private readonly LoginAttemptService $loginAttempts,
     ) {}
 
-    public function login(StoreLoginRequest $request, RememberedDeviceService $devices): JsonResponse
-    {
-        $login = (string) $request->input('login');
-        $password = (string) $request->input('password');
-        $remember = $request->boolean('remember');
-        $ipAddress = $request->ip() ?? 'unknown';
+    public function login(
+    StoreLoginRequest $request,
+    RememberedDeviceService $devices
+): JsonResponse {
+    $login = (string) $request->input('login');
+    $password = (string) $request->input('password');
+    $remember = $request->boolean('remember');
+    $ipAddress = $request->ip() ?? 'unknown';
 
-        $user = User::where('email', $login)
-            ->orWhere('username', $login)
-            ->first();
-        $attemptKey = (string) ($user?->email ?? $login);
+    $user = User::where('email', $login)
+        ->orWhere('username', $login)
+        ->first();
 
-        if ($this->loginAttempts->isRateLimited($attemptKey, $ipAddress)) {
-            return response()->json([
-                'message' => 'Too many login attempts. Please try again in 15 minutes.',
-            ], 429);
-        }
+    $attemptKey = (string) ($user?->email ?? $login);
 
-        if (! $user || ! Hash::check($password, $user->password)) {
-            $this->loginAttempts->recordFailure($attemptKey, $ipAddress);
+    // Preserve existing login rate limiting.
+    if ($this->loginAttempts->isRateLimited($attemptKey, $ipAddress)) {
+        return response()->json([
+            'message' => 'Too many login attempts. Please try again in 15 minutes.',
+        ], 429);
+    }
 
-            return response()->json([
-                'message' => 'Invalid credentials.',
-            ], 401);
-        }
-
-        if (! $user->is_active) {
-            return response()->json([
-                'message' => 'Your account has been deactivated. Please contact an administrator.',
-            ], 403);
-        }
-
-        $this->loginAttempts->clearIdentifier($attemptKey);
-        auth()->login($user);
-
-        // Approximate "new device" signal: an IP that differs from the last
-        // recorded login. Imperfect (a shared/rotating IP can false-positive
-        // or false-negative), but low-complexity and needs no extra device
-        // fingerprinting infrastructure beyond what already exists.
-        $previousIp = $user->last_login_ip;
-
-        $user->update([
-            'last_login_at' => now(),
-            'last_login_ip' => $ipAddress,
-        ]);
-
-        if ($previousIp !== null && $previousIp !== $ipAddress) {
-            $this->notifications->notify(
-                $user,
-                'account_activity',
-                new AccountActivityNotification('New sign-in to your account', 'Your account was just signed in to from a new location.'),
-                'New sign-in',
-                'Your account was just signed in to from a new location.',
-            );
-        }
-
-        if ($remember) {
-            $devices->issue($user, $request);
-        }
-
-        $token = null;
-        if ($request->expectsJson()
-            && $request->header('X-Client') === 'mobile'
-            && ! $request->hasHeader('X-Requested-With')) {
-            $mobileTokensToDelete = $user->tokens()
-                ->where('name', 'mobile')
-                ->orderByDesc('created_at')
-                ->orderByDesc('id')
-                ->get(['id'])
-                ->skip(self::MAX_MOBILE_TOKENS - 1)
-                ->pluck('id');
-
-            if ($mobileTokensToDelete->isNotEmpty()) {
-                $user->tokens()->whereIn('id', $mobileTokensToDelete)->delete();
-            }
-
-            $token = $user->createToken('mobile', ['mobile'])->plainTextToken;
-        }
+    // Verify credentials.
+    if (! $user || ! Hash::check($password, $user->password)) {
+        $this->loginAttempts->recordFailure($attemptKey, $ipAddress);
 
         return response()->json([
-            'message' => 'Login successful.',
-            'user' => $this->userResponse($user),
-            'token' => $token,
-        ]);
+            'message' => 'Invalid credentials.',
+        ], 401);
     }
+
+    // Prevent deactivated accounts from signing in.
+    if (! $user->is_active) {
+        return response()->json([
+            'message' => 'Your account has been deactivated. Please contact an administrator.',
+        ], 403);
+    }
+
+    $this->loginAttempts->clearIdentifier($attemptKey);
+
+    auth()->login($user);
+
+    // Keep the previous IP for existing web login activity.
+    $previousIp = $user->last_login_ip;
+
+    // Preserve login activity information.
+    $user->update([
+        'last_login_at' => now(),
+        'last_login_ip' => $ipAddress,
+    ]);
+
+    $isMobileClient = $request->header('X-Client') === 'mobile';
+
+    /*
+    |--------------------------------------------------------------------------
+    | Mobile New-Device Detection
+    |--------------------------------------------------------------------------
+    |
+    | Mobile installations use a persistent UUID instead of an IP address.
+    |
+    | First installation:
+    |   Register without notifying.
+    |
+    | Previously registered installation:
+    |   Update last-seen time without notifying.
+    |
+    | New additional installation:
+    |   Send a new-device notification.
+    |
+    | Older mobile versions without a device_id do not trigger
+    | unreliable IP-based notifications.
+    |
+    */
+
+    if ($isMobileClient) {
+        $installationId = $request->input('device_id');
+
+        if (
+            is_string($installationId) &&
+            $installationId !== ''
+        ) {
+            try {
+                $isNewInstallation = app(
+                    \App\Services\LoginDeviceInstallationService::class
+                )->register(
+                    $user,
+                    $installationId
+                );
+
+                if ($isNewInstallation) {
+                    $this->notifications->notify(
+                        $user,
+                        'account_activity',
+                        new AccountActivityNotification(
+                            'New device sign-in',
+                            'Your AlumniLink account was signed in on a new device.'
+                        ),
+                        'New device sign-in',
+                        'Your AlumniLink account was signed in on a new device.'
+                    );
+                }
+            } catch (\Throwable $exception) {
+                // Device tracking must never prevent a valid login.
+                \Illuminate\Support\Facades\Log::warning(
+                    'Login device tracking failed.',
+                    [
+                        'user_id' => $user->id,
+                        'exception' => $exception::class,
+                    ]
+                );
+            }
+        }
+    } elseif (
+        $previousIp !== null &&
+        $previousIp !== $ipAddress
+    ) {
+        /*
+        | Preserve the existing sign-in activity alert for web logins.
+        | This reports a changed network location, not a verified
+        | physical device change.
+        */
+
+        $this->notifications->notify(
+            $user,
+            'account_activity',
+            new AccountActivityNotification(
+                'New sign-in to your account',
+                'Your account was just signed in to from a new location.'
+            ),
+            'New sign-in',
+            'Your account was just signed in to from a new location.'
+        );
+    }
+
+    // Preserve existing browser Remember Me functionality.
+    if ($remember) {
+        $devices->issue($user, $request);
+    }
+
+    // Preserve existing mobile Sanctum token handling.
+    $token = null;
+
+    if (
+        $request->expectsJson() &&
+        $request->header('X-Client') === 'mobile' &&
+        ! $request->hasHeader('X-Requested-With')
+    ) {
+        $mobileTokensToDelete = $user->tokens()
+            ->where('name', 'mobile')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get(['id'])
+            ->skip(self::MAX_MOBILE_TOKENS - 1)
+            ->pluck('id');
+
+        if ($mobileTokensToDelete->isNotEmpty()) {
+            $user->tokens()
+                ->whereIn('id', $mobileTokensToDelete)
+                ->delete();
+        }
+
+        $token = $user->createToken(
+            'mobile',
+            ['mobile']
+        )->plainTextToken;
+    }
+
+    return response()->json([
+        'message' => 'Login successful.',
+        'user' => $this->userResponse($user),
+        'token' => $token,
+    ]);
+}
 
     public function register(StoreRegistrationRequest $request): JsonResponse
     {

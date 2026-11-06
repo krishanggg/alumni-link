@@ -32,6 +32,10 @@ import {
   syncPushTokenForCurrentUser,
 } from '../services/pushTokenService';
 
+import {
+  getOrCreateInstallationId,
+} from '../services/deviceInstallationService';
+
 const TOKEN_CREATED_AT_KEY = 'auth_token_created_at';
 const TOKEN_EXPIRY_DAYS = 30;
 
@@ -150,10 +154,33 @@ export function AuthProvider({
   }, [refreshUser]);
 
   /**
-   * Logs in and registers the current device.
+   * Logs in using the saved installation ID.
+   *
+   * This allows Laravel to distinguish:
+   * - A returning installation
+   * - A genuinely new installation
+   *
+   * The installation ID is not removed during logout.
    */
   async function login(payload: LoginPayload) {
-    const response = await authService.login(payload);
+    let loginRequest: LoginPayload & {
+      device_id?: string;
+    } = payload;
+
+    try {
+      // Retrieve the existing ID or generate one on first use.
+      const installationId = await getOrCreateInstallationId();
+
+      loginRequest = {
+        ...payload,
+        device_id: installationId,
+      };
+    } catch {
+      // A storage failure must not prevent the user from logging in.
+      // Without an installation ID, Laravel skips mobile device alerts.
+    }
+
+    const response = await authService.login(loginRequest);
 
     if (response.token) {
       await setToken(response.token);
@@ -181,6 +208,9 @@ export function AuthProvider({
    * the push-token endpoint requires authentication.
    *
    * Failure to unregister must not prevent logout.
+   *
+   * IMPORTANT:
+   * The installation ID is intentionally preserved.
    */
   async function logout() {
     try {
@@ -229,6 +259,9 @@ export function AuthProvider({
       await removeToken();
 
       await deleteAppStorageItem(TOKEN_CREATED_AT_KEY);
+
+      // Do not delete the installation ID.
+      // It must survive logout and future logins.
 
       queryClient.clear();
 
