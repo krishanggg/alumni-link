@@ -342,46 +342,113 @@ class ReportController extends Controller
     }
 
     public function publish(Request $request, Report $report): JsonResponse
-    {
-        $this->authorize('publish', $report);
+{
+    $this->authorize('publish', $report);
 
-        if ($report->lifecycle_status === ReportLifecycleStatus::Archived) {
-            return response()->json(['message' => 'Archived reports must be restored before they can be published.'], 422);
-        }
-
-        $data = $this->reportService->generateReportData($report->report_type, $report->filters ?? []);
-        $data = $this->reportService->filterReportDataForPublish($data);
-
-        if ($this->containsUnsafeFields($data)) {
-            return response()->json(['message' => 'This report contains fields that are not safe to publish to alumni.'], 422);
-        }
-
-        $oldPath = $report->file_path;
-        $newPath = $this->reportService->storeReportFile($data, $report->report_type, $report->format, $report->title, $report->filters ?? []);
-
-        $report->update([
-            'visibility' => ReportVisibility::Published,
-            'published_at' => now(),
-            'file_path' => $newPath,
-            'file_size' => $newPath ? Storage::disk('local')->size($newPath) : null,
-        ]);
-
-        if ($oldPath && $oldPath !== $newPath && Storage::disk('local')->exists($oldPath)) {
-            Storage::disk('local')->delete($oldPath);
-        }
-
-        ActivityLog::log(
-            $request->user()?->id,
-            'report.published',
-            Report::class,
-            $report->id,
-            "Report '{$report->title}' published",
-            null,
-            $request->ip(),
-        );
-
-        return response()->json(['message' => 'Report published.']);
+    // Archived reports must be restored before publishing.
+    if ($report->lifecycle_status === ReportLifecycleStatus::Archived) {
+        return response()->json([
+            'message' => 'Archived reports must be restored before they can be published.',
+        ], 422);
     }
+
+    // Do not publish or notify twice for an already-published report.
+    if ($report->visibility === ReportVisibility::Published) {
+        return response()->json([
+            'message' => 'Report already published.',
+        ]);
+    }
+
+    // Generate the latest report data.
+    $data = $this->reportService->generateReportData(
+        $report->report_type,
+        $report->filters ?? []
+    );
+
+    // Remove fields that should not appear in a published report.
+    $data = $this->reportService->filterReportDataForPublish($data);
+
+    // Preserve the existing report privacy validation.
+    if ($this->containsUnsafeFields($data)) {
+        return response()->json([
+            'message' => 'This report contains fields that are not safe to publish to alumni.',
+        ], 422);
+    }
+
+    $oldPath = $report->file_path;
+
+    // Generate the publishable report file.
+    $newPath = $this->reportService->storeReportFile(
+        $data,
+        $report->report_type,
+        $report->format,
+        $report->title,
+        $report->filters ?? []
+    );
+
+    // Mark the report as published.
+    $report->update([
+        'visibility' => ReportVisibility::Published,
+        'published_at' => now(),
+        'file_path' => $newPath,
+        'file_size' => $newPath
+            ? Storage::disk('local')->size($newPath)
+            : null,
+    ]);
+
+    // Remove the previous file only when it has been replaced.
+    if (
+        $oldPath &&
+        $oldPath !== $newPath &&
+        Storage::disk('local')->exists($oldPath)
+    ) {
+        Storage::disk('local')->delete($oldPath);
+    }
+
+    // Record the publishing activity.
+    ActivityLog::log(
+        $request->user()?->id,
+        'report.published',
+        Report::class,
+        $report->id,
+        "Report '{$report->title}' published",
+        null,
+        $request->ip(),
+    );
+
+    // Refresh the report before selecting notification recipients.
+    $report->refresh();
+
+    /**
+     * Notify only approved alumni matching the saved report filters.
+     *
+     * The notification service:
+     * - Checks the report's school.
+     * - Checks graduation year range.
+     * - Checks section/strand.
+     * - Checks gender.
+     * - Respects Report Completion notification preferences.
+     * - Sends an Expo push to registered devices.
+     */
+    try {
+        app(\App\Services\PublishedReportNotificationService::class)
+            ->notifyEligibleAlumni($report);
+    } catch (\Throwable $exception) {
+        // Notification failures must not undo a published report.
+        \Illuminate\Support\Facades\Log::error(
+            'Published report notification dispatch failed.',
+            [
+                'report_id' => $report->id,
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]
+        );
+    }
+
+    return response()->json([
+        'message' => 'Report published.',
+    ]);
+}
 
     public function unpublish(Request $request, Report $report): JsonResponse
     {
