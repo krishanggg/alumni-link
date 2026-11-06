@@ -5,20 +5,16 @@ import { Platform } from 'react-native';
 import { request } from './api';
 
 /**
- * Requests notification permission and returns an Expo push token, or null
- * when permission is denied or the token can't be obtained (e.g. running in
- * an environment without push capability). Never throws — push registration
- * is a best-effort side effect of auth, not something that should block
- * login.
+ * Requests notification permission and obtains an Expo push token.
+ *
+ * Push notifications are supported in installed EAS builds.
+ * Registration runs silently without displaying diagnostic popups.
  */
 export async function getExpoPushToken(): Promise<string | null> {
   if (Platform.OS === 'web') {
     return null;
   }
 
-  // expo-notifications installs a device push-token listener as a module side
-  // effect. Android Expo Go throws when that listener is registered, so avoid
-  // loading the package at all there. Remote push requires a development build.
   if (Platform.OS === 'android' && isRunningInExpoGo()) {
     return null;
   }
@@ -26,9 +22,8 @@ export async function getExpoPushToken(): Promise<string | null> {
   try {
     const Notifications = await import('expo-notifications');
 
+    // Configure the Android notification channel.
     if (Platform.OS === 'android') {
-      // Use a dedicated channel so installs that already created Expo's
-      // default channel at DEFAULT importance still get heads-up alerts.
       await Notifications.setNotificationChannelAsync('alumni-alerts', {
         name: 'AlumniLink alerts',
         importance: Notifications.AndroidImportance.MAX,
@@ -36,11 +31,17 @@ export async function getExpoPushToken(): Promise<string | null> {
       });
     }
 
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    // Check existing notification permissions.
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
+
     let finalStatus = existingStatus;
 
+    // Request permission if it has not been granted.
     if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
+      const { status } =
+        await Notifications.requestPermissionsAsync();
+
       finalStatus = status;
     }
 
@@ -48,33 +49,68 @@ export async function getExpoPushToken(): Promise<string | null> {
       return null;
     }
 
-    const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-    const tokenResponse = await Notifications.getExpoPushTokenAsync({ projectId });
+    // Retrieve the Expo EAS project ID.
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      Constants.easConfig?.projectId;
 
-    return tokenResponse.data;
+    if (!projectId) {
+      return null;
+    }
+
+    // Generate the Expo push token.
+    const tokenResponse =
+      await Notifications.getExpoPushTokenAsync({
+        projectId,
+      });
+
+    const token = tokenResponse.data;
+
+    if (!token) {
+      return null;
+    }
+
+    return token;
   } catch {
+    // Push token generation must not interrupt normal app usage.
     return null;
   }
 }
 
-export async function registerPushToken(expoPushToken: string): Promise<void> {
+/**
+ * Registers the device's Expo push token with Laravel.
+ */
+export async function registerPushToken(
+  expoPushToken: string
+): Promise<void> {
   await request('/profile/push-tokens', {
     method: 'POST',
-    body: JSON.stringify({ expo_push_token: expoPushToken }),
-  });
-}
-
-export async function unregisterPushToken(expoPushToken: string): Promise<void> {
-  await request('/profile/push-tokens', {
-    method: 'DELETE',
-    body: JSON.stringify({ expo_push_token: expoPushToken }),
+    body: JSON.stringify({
+      expo_push_token: expoPushToken,
+    }),
   });
 }
 
 /**
- * Fire-and-forget: obtains a token and registers it with the backend.
- * Swallows all failures (permission denial, network, server error) since
- * push registration must never block or surface errors on the auth flow.
+ * Removes the device's Expo push token from Laravel.
+ */
+export async function unregisterPushToken(
+  expoPushToken: string
+): Promise<void> {
+  await request('/profile/push-tokens', {
+    method: 'DELETE',
+    body: JSON.stringify({
+      expo_push_token: expoPushToken,
+    }),
+  });
+}
+
+/**
+ * Generates and registers the current device's push token.
+ *
+ * Registration is performed silently in the background.
+ * Any registration failure must not block authentication
+ * or prevent the user from using AlumniLink.
  */
 export async function syncPushTokenForCurrentUser(): Promise<void> {
   if (Platform.OS === 'web') {
@@ -82,6 +118,7 @@ export async function syncPushTokenForCurrentUser(): Promise<void> {
   }
 
   const token = await getExpoPushToken();
+
   if (!token) {
     return;
   }
@@ -89,6 +126,7 @@ export async function syncPushTokenForCurrentUser(): Promise<void> {
   try {
     await registerPushToken(token);
   } catch {
-    // Best-effort — the user can still use the app without push.
+    // Registration failures are non-blocking.
+    // The app continues operating normally.
   }
 }

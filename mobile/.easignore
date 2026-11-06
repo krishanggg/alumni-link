@@ -1,0 +1,65 @@
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native files
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+google-services.json
+GoogleService-Info.plist
+
+# Metro
+.metro-health-check*
+
+# Debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# Local environment files
+.env
+.env.*
+.env*.local
+
+# TypeScript
+*.tsbuildinfo
+
+# iOS generated folder
+/ios
+
+# IMPORTANT:
+# Do not ignore /android.
+# EAS needs android/gradlew and the Android Gradle project.
+
+# Ignore generated Android build files only
+/android/.gradle/
+/android/.kotlin/
+/android/.cxx/
+/android/build/
+/android/app/build/
+/android/app/.cxx/
+/android/local.properties
+
+# Exclude sensitive backend credentials
+*firebase-adminsdk*.json
+
+# Include Firebase client configuration required by Android
+!/google-services.json
+!/android/app/google-services.json
+
+# Exclude previous inspection output
+/eas-archive-check/

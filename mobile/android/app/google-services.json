@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "32835280908",
+    "project_id": "alumnilink-644e3",
+    "storage_bucket": "alumnilink-644e3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:32835280908:android:30211464948b1046020e29",
+        "android_client_info": {
+          "package_name": "com.app.alumnilink"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmVq9WveNzFMOBtFM6E9Ln1DCmUVjD7sU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

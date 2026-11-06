@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+
+# Android / IntelliJ
+build/
+.idea/
+.gradle/
+local.properties
+*.iml
+*.hprof
+.cxx/
+
+# Generated inline modules
+app/src/main/java/inline/
+
+# Bundle artifacts
+*.jsbundle
+
+# Private signing credentials
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.pem
+*.key
+
+# Private Firebase service account credentials
+*firebase-adminsdk*.json
+*service-account*.json

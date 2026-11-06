@@ -1,12 +1,19 @@
+
 const fs = require('fs');
 const path = require('path');
 
 const isLocalDev = process.env.ALUMNILINK_LOCAL_DEV === '1';
 
-const localGoogleServices = path.join(__dirname, 'google-services.json');
+const localGoogleServices = path.join(
+  __dirname,
+  'google-services.json'
+);
 
-const googleServicesFile = process.env.GOOGLE_SERVICES_JSON
-  ?? (fs.existsSync(localGoogleServices) ? './google-services.json' : undefined);
+const googleServicesFile =
+  process.env.GOOGLE_SERVICES_JSON ??
+  (fs.existsSync(localGoogleServices)
+    ? './google-services.json'
+    : undefined);
 
 module.exports = {
   expo: {
@@ -24,25 +31,33 @@ module.exports = {
     android: {
       adaptiveIcon: {
         backgroundColor: '#E6F4FE',
-        foregroundImage: './assets/android-icon-foreground.png',
-        backgroundImage: './assets/android-icon-background.png',
-        monochromeImage: './assets/android-icon-monochrome.png',
+        foregroundImage:
+          './assets/android-icon-foreground.png',
+        backgroundImage:
+          './assets/android-icon-background.png',
+        monochromeImage:
+          './assets/android-icon-monochrome.png',
       },
 
       package: isLocalDev
         ? 'com.app.alumnilink.dev'
         : 'com.app.alumnilink',
 
-      runtimeVersion: {
-        policy: 'appVersion',
-      },
+      // Fixed runtime version for native Android builds
+      runtimeVersion: '1.0.1',
 
-      ...(googleServicesFile ? { googleServicesFile } : {}),
+      // Firebase configuration for Android
+      ...(googleServicesFile
+        ? { googleServicesFile }
+        : {}),
     },
 
     // Expo Over-the-Air Updates
     updates: {
+      enabled: true,
       url: 'https://u.expo.dev/26ea7153-81c3-4648-a474-8ed18376e0d8',
+      checkAutomatically: 'ON_LOAD',
+      fallbackToCacheTimeout: 0,
     },
 
     web: {
@@ -68,7 +83,8 @@ module.exports = {
 
     extra: {
       eas: {
-        projectId: '26ea7153-81c3-4648-a474-8ed18376e0d8',
+        projectId:
+          '26ea7153-81c3-4648-a474-8ed18376e0d8',
       },
     },
 

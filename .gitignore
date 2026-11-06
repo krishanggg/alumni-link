@@ -43,7 +43,7 @@ backend/.phpunit.result.cache
 
 # Expo
 mobile/ios/
-mobile/android/
+# mobile/android/
 
 .playwright-mcp
 
@@ -88,3 +88,8 @@ mobile/android/
 .opencode/agents/impeccable-*
 
 .codegraph/
+
+
+/backend.zip
+/mobile.zip
+/my-app.zip
