@@ -15,6 +15,7 @@ class NotificationPreference extends Model
     protected $fillable = [
         'user_id', 'account_activity', 'alumni_record_updates',
         'system_announcements', 'report_completion', 'feedback',
+        'administrative_notices',
     ];
 
     public const DEFAULTS = [
@@ -23,6 +24,7 @@ class NotificationPreference extends Model
         'system_announcements' => true,
         'report_completion' => true,
         'feedback' => true,
+        'administrative_notices' => true,
     ];
 
     /**
@@ -37,6 +39,7 @@ class NotificationPreference extends Model
 
         if ($user->role === UserRole::Alumni) {
             $defaults['feedback'] = false;
+            $defaults['administrative_notices'] = false;
         }
 
         return $defaults;
@@ -50,6 +53,7 @@ class NotificationPreference extends Model
             'system_announcements' => 'boolean',
             'report_completion' => 'boolean',
             'feedback' => 'boolean',
+            'administrative_notices' => 'boolean',
         ];
     }
 

@@ -94,7 +94,11 @@ export default function NotificationSettings() {
         <div className="flex items-center justify-between border-b border-outline-variant/70 px-6 py-4">
           <div>
             <h2 className="text-headline-sm font-headline-sm text-on-surface">Admin Notification Preferences</h2>
-            <p className="mt-1 text-body-md text-on-surface-variant">Choose which account security and feedback updates you receive by email.</p>
+            <p className="mt-1 text-body-md text-on-surface-variant">
+              {isSuperAdmin
+                ? 'Choose which account security and feedback updates you receive by email.'
+                : 'Choose which account security, feedback, and school administration updates you receive by email.'}
+            </p>
           </div>
           <Button type="submit" disabled={isSaving || !hasChanges} icon={Save} isLoading={isSaving} loadingText="Saving">
             Save Changes
@@ -130,6 +134,14 @@ export default function NotificationSettings() {
               checked={preferences.feedback}
               onChange={(value) => handleToggle('feedback', value)}
             />
+            {!isSuperAdmin && (
+              <Switch
+                label="School Administration Notices"
+                description="Get an email when a Super Admin changes or removes a record for your school."
+                checked={preferences.administrative_notices}
+                onChange={(value) => handleToggle('administrative_notices', value)}
+              />
+            )}
           </div>
         </div>
       </form>

@@ -21,6 +21,7 @@ class UpdateNotificationPreferenceRequest extends FormRequest
             'system_announcements' => 'sometimes|boolean',
             'report_completion' => 'sometimes|boolean',
             'feedback' => 'sometimes|boolean',
+            'administrative_notices' => 'sometimes|boolean',
         ];
     }
 }

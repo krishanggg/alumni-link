@@ -56,6 +56,7 @@ class NotificationPreferenceController extends Controller
             'system_announcements' => $prefs->system_announcements,
             'report_completion' => $prefs->report_completion,
             'feedback' => $prefs->feedback,
+            'administrative_notices' => $prefs->administrative_notices,
         ];
     }
 }

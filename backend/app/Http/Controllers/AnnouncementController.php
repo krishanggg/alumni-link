@@ -120,7 +120,16 @@ class AnnouncementController extends Controller
         $targetAllBatches = $request->boolean('target_all_batches');
         $targetBatches = $request->input('target_batches', []);
 
+        $previousSchoolId = $announcement->school_id;
         $announcement = $this->announcementService->update($announcement, $attributes, $targetAllBatches, $targetBatches, $request->user());
+        $changeNotifications = app(\App\Services\SchoolAdminChangeNotificationService::class);
+        $summary = "Announcement '{$announcement->title}' was updated.";
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(), $previousSchoolId, $summary,
+        );
+        if ($announcement->school_id !== $previousSchoolId) {
+            $changeNotifications->notify($request->user(), $announcement->school_id, $summary);
+        }
 
         return response()->json(new AnnouncementResource($announcement->fresh(['batches', 'school', 'creator'])));
     }
@@ -130,6 +139,9 @@ class AnnouncementController extends Controller
         $this->authorize('delete', $announcement);
 
         $title = $announcement->title;
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(), $announcement->school_id, "Announcement '{$title}' was deleted.",
+        );
         $announcement->delete();
 
         ActivityLog::log(
@@ -150,6 +162,10 @@ class AnnouncementController extends Controller
         $this->authorize('publish', $announcement);
 
         $this->announcementService->publish($announcement);
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(), $announcement->school_id,
+            "Announcement '{$announcement->title}' was published.",
+        );
 
         ActivityLog::log(
             $request->user()?->id,
@@ -169,6 +185,10 @@ class AnnouncementController extends Controller
         $this->authorize('unpublish', $announcement);
 
         $this->announcementService->unpublish($announcement);
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(), $announcement->school_id,
+            "Announcement '{$announcement->title}' was unpublished.",
+        );
 
         ActivityLog::log(
             $request->user()?->id,
@@ -207,6 +227,10 @@ class AnnouncementController extends Controller
         $this->authorize('archive', $announcement);
 
         $wasPublished = $this->announcementService->archive($announcement, $request->user()?->id);
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(), $announcement->school_id,
+            "Announcement '{$announcement->title}' was archived.",
+        );
 
         ActivityLog::log(
             $request->user()?->id,
@@ -228,6 +252,10 @@ class AnnouncementController extends Controller
         $this->authorize('restoreFromArchive', $announcement);
 
         $this->announcementService->restoreFromArchive($announcement, $request->user()?->id);
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(), $announcement->school_id,
+            "Announcement '{$announcement->title}' was restored from archive.",
+        );
 
         ActivityLog::log(
             $request->user()?->id,

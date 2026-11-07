@@ -72,6 +72,7 @@ export interface NotificationPreferences {
   system_announcements: boolean;
   report_completion: boolean;
   feedback: boolean;
+  administrative_notices: boolean;
 }
 
 export interface RememberedDevice {
