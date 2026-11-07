@@ -17,6 +17,7 @@ export default function NotificationSettings() {
   const [success, setSuccess] = useState('');
 
   const hasChanges = JSON.stringify(preferences) !== JSON.stringify(savedPreferences);
+  const isSuperAdmin = user?.role === 'super_admin';
 
   useEffect(() => {
     async function load() {
@@ -92,8 +93,8 @@ export default function NotificationSettings() {
       <form onSubmit={handleSave} className="overflow-hidden rounded-lg border border-outline-variant/70 bg-white shadow-card">
         <div className="flex items-center justify-between border-b border-outline-variant/70 px-6 py-4">
           <div>
-            <h2 className="text-headline-sm font-headline-sm text-on-surface">Notification Preferences</h2>
-            <p className="mt-1 text-body-md text-on-surface-variant">Each setting controls both email and push notifications for that category. Push notifications require the AlumniLink app and notification permission.</p>
+            <h2 className="text-headline-sm font-headline-sm text-on-surface">Admin Notification Preferences</h2>
+            <p className="mt-1 text-body-md text-on-surface-variant">Choose which account security and feedback updates you receive by email.</p>
           </div>
           <Button type="submit" disabled={isSaving || !hasChanges} icon={Save} isLoading={isSaving} loadingText="Saving">
             Save Changes
@@ -117,36 +118,18 @@ export default function NotificationSettings() {
           <div className="divide-y divide-outline-variant rounded-lg border border-outline-variant/70 bg-white px-4">
             <Switch
               label="Account Activity"
-              description="Get notified about password changes and login from new devices"
+              description="Get an email about password changes and sign-ins from a new location."
               checked={preferences.account_activity}
               onChange={(value) => handleToggle('account_activity', value)}
             />
             <Switch
-              label="Alumni Record Updates"
-              description="Get notified when your linked alumni record is modified by an admin"
-              checked={preferences.alumni_record_updates}
-              onChange={(value) => handleToggle('alumni_record_updates', value)}
+              label="Feedback Conversation Updates"
+              description={isSuperAdmin
+                ? 'Get an email when a school admin starts or replies to a conversation, or its status changes.'
+                : 'Get an email when a super admin replies to or changes the status of a conversation for your school.'}
+              checked={preferences.feedback}
+              onChange={(value) => handleToggle('feedback', value)}
             />
-            <Switch
-              label="System Announcements"
-              description="Get notified about new announcements from the school"
-              checked={preferences.system_announcements}
-              onChange={(value) => handleToggle('system_announcements', value)}
-            />
-            <Switch
-              label="Report Completion"
-              description="Get notified when a new report is completed"
-              checked={preferences.report_completion}
-              onChange={(value) => handleToggle('report_completion', value)}
-            />
-            {user?.role !== 'alumni' && (
-              <Switch
-                label="Feedback Conversation Updates"
-                description="Get notified about new feedback threads, replies, and status changes"
-                checked={preferences.feedback}
-                onChange={(value) => handleToggle('feedback', value)}
-              />
-            )}
           </div>
         </div>
       </form>
