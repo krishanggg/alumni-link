@@ -80,7 +80,7 @@ function NotificationSettingsScreen() {
     >
       <Text style={styles.sectionTitle}>Notification Preferences</Text>
       <Text style={styles.subtitle}>
-        Choose which email and push notifications you receive.{'\n'}
+        Each switch controls both email and push notifications for that category. Push notifications require the app and notification permission.{'\n'}
         Changes are saved automatically.
       </Text>
 

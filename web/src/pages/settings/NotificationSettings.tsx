@@ -92,8 +92,8 @@ export default function NotificationSettings() {
       <form onSubmit={handleSave} className="overflow-hidden rounded-lg border border-outline-variant/70 bg-white shadow-card">
         <div className="flex items-center justify-between border-b border-outline-variant/70 px-6 py-4">
           <div>
-            <h2 className="text-headline-sm font-headline-sm text-on-surface">Email Notifications</h2>
-            <p className="mt-1 text-body-md text-on-surface-variant">Choose which notifications you receive by email.</p>
+            <h2 className="text-headline-sm font-headline-sm text-on-surface">Notification Preferences</h2>
+            <p className="mt-1 text-body-md text-on-surface-variant">Each setting controls both email and push notifications for that category. Push notifications require the AlumniLink app and notification permission.</p>
           </div>
           <Button type="submit" disabled={isSaving || !hasChanges} icon={Save} isLoading={isSaving} loadingText="Saving">
             Save Changes
@@ -141,8 +141,8 @@ export default function NotificationSettings() {
             />
             {user?.role !== 'alumni' && (
               <Switch
-                label="Feedback Replies"
-                description="Get notified when someone replies to a feedback conversation"
+                label="Feedback Conversation Updates"
+                description="Get notified about new feedback threads, replies, and status changes"
                 checked={preferences.feedback}
                 onChange={(value) => handleToggle('feedback', value)}
               />

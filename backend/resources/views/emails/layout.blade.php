@@ -13,14 +13,11 @@
         <td style="background:#23598b; padding:20px 28px; border-radius:2px 2px 0 0;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
+                    @if(!empty($schoolLogoUrl))
                     <td width="44" style="vertical-align:middle;">
-                        @if(!empty($schoolLogoUrl))
                         <img src="{{ $schoolLogoUrl }}" width="32" height="32" alt="" style="border-radius:50%; display:block;">
-                        @else
-                        {{-- No school logo (or no school) — fall back to the AlumniLink brand mark. --}}
-                        <img src="{{ url('images/brand-mark.png') }}" width="32" height="32" alt="" style="display:block;">
-                        @endif
                     </td>
+                    @endif
                     <td style="vertical-align:middle; color:#ffffff; font-size:16px; font-weight:bold; letter-spacing:0.3px;">
                         {{ $schoolName ?? 'AlumniLink' }}
                     </td>

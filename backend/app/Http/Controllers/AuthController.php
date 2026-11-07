@@ -24,11 +24,13 @@ use App\Services\NotificationDispatchService;
 use App\Services\PasswordResetTokenService;
 use App\Services\RememberedDeviceService;
 use App\Services\UserPasswordService;
+use Illuminate\Broadcasting\BroadcastException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\TransientToken;
 
 class AuthController extends Controller
@@ -256,7 +258,7 @@ class AuthController extends Controller
             $user->save();
         });
 
-        PendingApprovalCreated::dispatch($schoolId);
+        $this->dispatchPendingApprovalCreated($schoolId);
 
         return response()->json([
             'message' => 'Registration submitted successfully. Your account is pending admin approval.',
@@ -310,12 +312,28 @@ class AuthController extends Controller
         $user->rejection_reason = null;
         $user->save();
 
-        PendingApprovalCreated::dispatch((int) $user->school_id);
+        $this->dispatchPendingApprovalCreated((int) $user->school_id);
 
         return response()->json([
             'message' => 'Your registration has been resubmitted for review.',
             'user' => $this->userResponse($user->refresh()),
         ]);
+    }
+
+    /**
+     * Realtime updates improve the admin experience but must not prevent a
+     * valid registration or resubmission when the local broadcast server is
+     * unavailable.
+     */
+    private function dispatchPendingApprovalCreated(int $schoolId): void
+    {
+        try {
+            PendingApprovalCreated::dispatch($schoolId);
+        } catch (BroadcastException) {
+            Log::warning('Could not broadcast the pending approval update.', [
+                'school_id' => $schoolId,
+            ]);
+        }
     }
 
     public function completeProfile(CompleteAlumniProfileRequest $request): JsonResponse
