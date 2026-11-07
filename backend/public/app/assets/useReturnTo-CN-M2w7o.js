@@ -1,0 +1,1 @@
+import{L as e,R as t}from"./index-DGf20PNH.js";function n(t){let n=e();return{returnTo:`${n.pathname}${n.search}`,returnLabel:t}}function r(){let n=e(),r=t(),{returnTo:i,returnLabel:a}=n.state??{};return{returnTo:i,returnLabel:a,goBack:i?()=>r(i):void 0}}export{r as n,n as t};

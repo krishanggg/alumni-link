@@ -1,0 +1,1 @@
+import{o as e}from"./jsx-runtime-CZcjcDnw.js";import{$t as t}from"./icons-CY3TycZS.js";import{N as n}from"./index-DGf20PNH.js";var r=e(t(),1);function i(){let e=(0,r.useContext)(n);if(!e)throw Error(`useScope must be used within a ScopeProvider`);return e}export{i as t};
