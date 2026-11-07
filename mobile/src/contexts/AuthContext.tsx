@@ -135,7 +135,7 @@ export function AuthProvider({
 
       setUser(currentUser);
 
-      if (currentUser.account_status === 'approved') {
+      if (currentUser.account_status === 'approved' || currentUser.account_status === 'pending') {
         startPushTokenSync();
       }
     } catch {
@@ -196,7 +196,7 @@ export function AuthProvider({
 
     setUser(response.user);
 
-    if (response.user.account_status === 'approved') {
+    if (response.user.account_status === 'approved' || response.user.account_status === 'pending') {
       startPushTokenSync();
     }
   }

@@ -64,6 +64,10 @@ class ApprovalService
             new AccountActivityNotification('Your registration was not approved', $reason ? "Your alumni registration was not approved. Reason: {$reason}" : 'Your alumni registration was not approved.'),
             'Registration update',
             'Your alumni registration was not approved.',
+            // The rejection is a transactional application status update,
+            // so it must reach the applicant even if optional account alerts
+            // have been turned off.
+            respectPreference: false,
         );
     }
 

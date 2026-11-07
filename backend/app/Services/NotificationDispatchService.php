@@ -38,9 +38,10 @@ class NotificationDispatchService
         Notification $mailNotification,
         ?string $pushTitle = null,
         ?string $pushBody = null,
+        bool $respectPreference = true,
     ): void {
         // Respect the recipient's saved notification preference.
-        if (! NotificationPreference::allows($user, $category)) {
+        if ($respectPreference && ! NotificationPreference::allows($user, $category)) {
             return;
         }
 

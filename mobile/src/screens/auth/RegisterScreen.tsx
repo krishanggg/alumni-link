@@ -241,8 +241,8 @@ function RegisterScreen() {
       <View style={styles.successContainer}>
         <Text style={styles.successTitle}>Registration Submitted</Text>
         <Text style={styles.successBody}>
-          Your registration has been submitted and is pending admin approval. You&apos;ll be able to log
-          in once your account is approved.
+          Your registration is pending admin approval. You can sign in to check its status. On mobile,
+          allow notifications to receive an alert when your application status changes.
         </Text>
         <Pressable
           style={styles.submitButton}
