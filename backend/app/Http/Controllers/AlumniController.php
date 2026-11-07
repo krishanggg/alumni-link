@@ -14,7 +14,7 @@ use App\Http\Requests\Alumni\UploadProfilePhotoRequest;
 use App\Http\Resources\AlumniListResource;
 use App\Http\Resources\AlumniResource;
 use App\Models\Alumni;
-use App\Rules\UniqueEmailLocalPart;
+use App\Rules\UniqueEmailAddress;
 use App\Services\AlumniService;
 use App\Services\DashboardCacheService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -202,7 +202,7 @@ class AlumniController extends Controller
     public function checkEmailAvailability(CheckEmailAvailabilityRequest $request): JsonResponse
     {
         $user = $request->user();
-        $rule = new UniqueEmailLocalPart(
+        $rule = new UniqueEmailAddress(
             'alumni',
             column: 'contact_email',
             ignoreId: $request->input('exclude_id'),

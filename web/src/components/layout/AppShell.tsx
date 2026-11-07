@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, CircleHelp } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useFeedbackUnreadCount } from '../../hooks/useFeedback';
+import { usePendingApprovalCount } from '../../hooks/useUsers';
+import { usePendingApprovalsRealtime } from '../../hooks/usePendingApprovalsRealtime';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { adminNavItems, alumniNavItems, schoolAdminNavItems } from '../../config/navigation';
 import { useNavigationFocusHandoff } from '../../contexts/navigationFocusHandoffContext';
@@ -47,11 +49,32 @@ export function AppShell({ title, subtitle, headerActions, children, contentScro
   const drawerToggleRef = useRef<HTMLButtonElement>(null);
   const mainRef = useRef<HTMLElement>(null);
 
-  const navItems = user?.role === 'super_admin'
+  const baseNavItems = user?.role === 'super_admin'
     ? adminNavItems
     : user?.role === 'school_admin'
       ? schoolAdminNavItems
       : alumniNavItems;
+  const { data: pendingApprovalCount = 0 } = usePendingApprovalCount(
+    user?.role === 'super_admin' || user?.role === 'school_admin',
+  );
+  usePendingApprovalsRealtime(
+    user?.id ?? null,
+    user?.role === 'super_admin' || user?.role === 'school_admin',
+  );
+  const navItems = baseNavItems.map((item) => {
+    if (item.path === '/pending-approvals') {
+      return { ...item, badgeCount: pendingApprovalCount };
+    }
+    if (item.children?.some((child) => child.path === '/pending-approvals')) {
+      return {
+        ...item,
+        children: item.children.map((child) => child.path === '/pending-approvals'
+          ? { ...child, badgeCount: pendingApprovalCount }
+          : child),
+      };
+    }
+    return item;
+  });
   const { data: unreadData } = useFeedbackUnreadCount(user?.role === 'super_admin' || user?.role === 'school_admin');
   const unreadFeedbackCount = unreadData?.unread_count ?? 0;
   const scrollKey = `${location.pathname}${location.search}`;

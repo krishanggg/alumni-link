@@ -10,6 +10,7 @@ if /I "%~1"=="--help" (
   echo production: rebuilds the SPA, then serves it through WAMP Apache.
   echo development: starts Vite HMR at http://alumnilink.local:5173.
   echo Queue worker, scheduler, and Laravel backend log consoles are started in both modes.
+  echo Reverb starts automatically when BROADCAST_CONNECTION=reverb in backend\.env.
   exit /b 0
 )
 
@@ -70,6 +71,11 @@ call :ensure_worker "queue-worker" "AlumniLink Queue Worker"
 if errorlevel 1 exit /b 1
 call :ensure_worker "scheduler" "AlumniLink Scheduler"
 if errorlevel 1 exit /b 1
+findstr /B /I /C:"BROADCAST_CONNECTION=reverb" "%ROOT%backend\.env" >nul
+if not errorlevel 1 (
+  call :ensure_worker "reverb" "AlumniLink Reverb Server"
+  if errorlevel 1 exit /b 1
+)
 call :ensure_backend_log
 if errorlevel 1 exit /b 1
 
@@ -86,6 +92,7 @@ echo AlumniLink is healthy.
 if /I "%APP_STAGE%"=="development" echo [INFO] Vite HMR: %FRONTEND_URL%
 if /I "%APP_STAGE%"=="production" echo [INFO] Production SPA: %FRONTEND_URL%
 echo [INFO] Worker logs: %STATE_DIR%\queue-worker.log and %STATE_DIR%\scheduler.log
+if exist "%STATE_DIR%\reverb.log" echo [INFO] Reverb log: %STATE_DIR%\reverb.log
 echo [INFO] Backend log: %ROOT%backend\storage\logs\laravel.log
 echo Use stop.bat to close AlumniLink consoles. WAMP Apache and MySQL are managed by WAMP.
 exit /b 0

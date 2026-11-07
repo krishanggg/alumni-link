@@ -14,3 +14,7 @@ Broadcast::channel('feedback.thread.{thread}', function (User $user, FeedbackThr
 Broadcast::channel('feedback.inbox.{userId}', function (User $user, int $userId): bool {
     return $user->isAdmin() && $user->id === $userId;
 });
+
+Broadcast::channel('approvals.inbox.{userId}', function (User $user, int $userId): bool {
+    return $user->isAdmin() && $user->is_active && $user->id === $userId;
+});

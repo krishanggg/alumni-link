@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Auth;
 
 use App\Rules\PhilippinePhoneNumber;
-use App\Rules\UniqueEmailLocalPart;
+use App\Rules\UniqueEmailAddress;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -44,7 +44,7 @@ class ResubmitRegistrationRequest extends FormRequest
             'middle_name' => 'nullable|string|max:100',
             'last_name' => 'nullable|string|max:255',
             'suffix' => 'nullable|string|max:20',
-            'email' => ['nullable', 'email', 'max:255', new UniqueEmailLocalPart('users', ignoreId: $userId)],
+            'email' => ['nullable', 'email', 'max:255', new UniqueEmailAddress('users', ignoreId: $userId)],
             'username' => "nullable|string|max:100|regex:/^[a-zA-Z0-9_]+$/|unique:users,username,{$userId}",
             'school_id' => ['nullable', Rule::exists('schools', 'id')->where('is_active', 1)],
             'graduation_year' => 'nullable|integer|min:1900|max:'.date('Y'),

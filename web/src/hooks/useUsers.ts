@@ -173,3 +173,17 @@ export function usePendingApprovals() {
 
   return { pending: pending ?? null, isLoading, isFetching, fetchPending };
 }
+
+/** Fetch only one row to obtain the server's scoped pending total. */
+export function usePendingApprovalCount(enabled = true) {
+  return useQuery({
+    queryKey: approvalKeys.pendingCount(),
+    queryFn: async () => (await ApprovalService.listApprovals({ per_page: 1 })).total,
+    enabled,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+  });
+}

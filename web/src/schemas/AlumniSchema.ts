@@ -42,4 +42,10 @@ export const AlumniFormSchema = z.object({
   }
 });
 
+export const AlumniFormSchemaWithRequiredSchool = AlumniFormSchema.superRefine((values, context) => {
+  if (!values.school_id) {
+    context.addIssue({ code: 'custom', path: ['school_id'], message: 'Select a school.' });
+  }
+});
+
 export type AlumniFormValues = z.infer<typeof AlumniFormSchema>;

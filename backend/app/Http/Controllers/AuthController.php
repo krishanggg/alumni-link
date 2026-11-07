@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\AccountStatus;
 use App\Enums\UserRole;
+use App\Events\PendingApprovalCreated;
 use App\Http\Requests\Auth\ChangePasswordRequest;
 use App\Http\Requests\Auth\CompleteAlumniProfileRequest;
 use App\Http\Requests\Auth\NewPasswordRequest;
@@ -215,6 +216,8 @@ class AuthController extends Controller
 
     public function register(StoreRegistrationRequest $request): JsonResponse
     {
+        $schoolId = (int) $request->input('school_id');
+
         DB::transaction(function () use ($request) {
             $alumni = new Alumni;
             $alumni->fill([
@@ -252,6 +255,8 @@ class AuthController extends Controller
             $user->alumni_id = $alumni->id;
             $user->save();
         });
+
+        PendingApprovalCreated::dispatch($schoolId);
 
         return response()->json([
             'message' => 'Registration submitted successfully. Your account is pending admin approval.',
@@ -304,6 +309,8 @@ class AuthController extends Controller
         $user->account_status = AccountStatus::Pending;
         $user->rejection_reason = null;
         $user->save();
+
+        PendingApprovalCreated::dispatch((int) $user->school_id);
 
         return response()->json([
             'message' => 'Your registration has been resubmitted for review.',

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
 import { ApiError } from '../../services/api';
@@ -7,6 +7,7 @@ import { AlumniService } from '../../services/AlumniService';
 import { AlumniForm } from '../../components/alumni/AlumniForm';
 import { ConfirmDialog } from '../../components/shared/ConfirmDialog';
 import { useAuth } from '../../hooks/useAuth';
+import { useScope } from '../../hooks/useScope';
 import { useAlumniMutations } from '../../hooks/useAlumni';
 import type { AlumniFormInput, AlumniRecord } from '../../hooks/useAlumni';
 
@@ -16,7 +17,7 @@ function AlumniFormPage() {
   const { showToast } = useToast();
   const { user } = useAuth();
   const { createAlumni, updateAlumni, uploadAlumniPhoto, deleteAlumniPhoto } = useAlumniMutations();
-  const [searchParams] = useSearchParams();
+  const { schoolId: selectedSchoolId } = useScope();
   const isEditing = Boolean(id);
 
   const [record, setRecord] = useState<AlumniRecord | null>(null);
@@ -134,7 +135,8 @@ function AlumniFormPage() {
           error={formError}
           fieldErrors={formFieldErrors}
           lockedSchoolId={user?.role === 'school_admin' ? user.school_id : null}
-          initialSchoolId={user?.role === 'super_admin' ? Number(searchParams.get('school_id')) || null : null}
+          initialSchoolId={user?.role === 'super_admin' ? selectedSchoolId ?? null : null}
+          requireSchool={!isEditing && user?.role === 'super_admin'}
         />
       </div>
 

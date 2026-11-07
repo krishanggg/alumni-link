@@ -9,15 +9,12 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Rejects an email whose local part (before the @) matches an existing row's
- * local part in the given table, regardless of domain — e.g. once
- * jdoe@example.com exists, jdoe@another-domain.org is also rejected, but
- * jdoe2@example.com is allowed. Compares in PHP rather than via SQL LIKE so
- * behavior stays identical across the SQLite test driver and MySQL production
- * driver, and so local parts containing literal % or _ aren't mismatched by
- * LIKE wildcards.
+ * Rejects an email address that is already used in the given table.
+ * Compares complete addresses case-insensitively to match the database's
+ * typical email uniqueness behavior while allowing the same local part at
+ * different domains (for example, alex@gmail.com and alex@yahoo.com).
  */
-class UniqueEmailLocalPart implements ValidationRule
+class UniqueEmailAddress implements ValidationRule
 {
     public function __construct(
         private readonly string $table,
@@ -33,7 +30,7 @@ class UniqueEmailLocalPart implements ValidationRule
             return;
         }
 
-        $localPart = strtolower(strstr($value, '@', true));
+        $email = strtolower(trim($value));
 
         $query = DB::table($this->table)->whereNotNull($this->column);
 
@@ -46,13 +43,12 @@ class UniqueEmailLocalPart implements ValidationRule
         }
 
         $conflict = $query->pluck($this->column)->contains(
-            fn (mixed $email): bool => is_string($email)
-                && str_contains($email, '@')
-                && strtolower(strstr($email, '@', true)) === $localPart
+            fn (mixed $existingEmail): bool => is_string($existingEmail)
+                && strtolower(trim($existingEmail)) === $email
         );
 
         if ($conflict) {
-            $fail('This email prefix is already registered. Try a different one, e.g. add a number before the @.');
+            $fail('This email address is already registered.');
         }
     }
 }

@@ -15,6 +15,12 @@ client profile; alumni use the companion Android app for alumni-facing
 features. Node.js/npm are setup and update prerequisites only; Apache serves
 the compiled admin SPA alongside Laravel's API at runtime.
 
+Compiled files in `backend/public/app` are generated output and are ignored by
+Git. The WAMP setup and production start scripts build them from `web/`.
+For Railway, configure the repository-root build command to run
+`npm --prefix web ci --no-audit --no-fund --no-progress` followed by
+`npm --prefix web run build` before deploying the Laravel public directory.
+
 The **[User Guide](docs/user-guide/00-overview.md)** explains the application
 for alumni and administrators.
 

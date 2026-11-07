@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\User;
 
-use App\Rules\UniqueEmailLocalPart;
+use App\Rules\UniqueEmailAddress;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -21,7 +21,7 @@ class UpdateUserRequest extends FormRequest
         $currentRole = $this->route('user')->role?->value;
 
         return [
-            'email' => ['required', 'email', 'max:255', new UniqueEmailLocalPart('users', ignoreId: $userId)],
+            'email' => ['required', 'email', 'max:255', new UniqueEmailAddress('users', ignoreId: $userId)],
             'username' => "required|string|max:100|regex:/^[a-zA-Z0-9_]+$/|unique:users,username,{$userId}",
             'role' => ['required', Rule::in(array_filter(['school_admin', 'alumni', $currentRole]))],
             'account_status' => 'nullable|in:pending,approved,rejected',
