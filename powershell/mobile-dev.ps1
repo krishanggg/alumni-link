@@ -359,8 +359,13 @@ if ($lockReadExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($expectedExpoVersio
 $expoPackagePath = Join-Path $mobileRoot 'node_modules\expo\package.json'
 $expoCommandPath = Join-Path $mobileRoot 'node_modules\.bin\expo.cmd'
 $installMarkerPath = Join-Path $mobileRoot 'node_modules\.alumnilink-install-state'
-$packageManifestHash = (Get-FileHash -LiteralPath (Join-Path $mobileRoot 'package.json') -Algorithm SHA256).Hash
-$lockfileHash = (Get-FileHash -LiteralPath (Join-Path $mobileRoot 'package-lock.json') -Algorithm SHA256).Hash
+$sha256 = [System.Security.Cryptography.SHA256]::Create()
+try {
+    $packageManifestHash = [BitConverter]::ToString($sha256.ComputeHash([IO.File]::ReadAllBytes((Join-Path $mobileRoot 'package.json')))).Replace('-', '')
+    $lockfileHash = [BitConverter]::ToString($sha256.ComputeHash([IO.File]::ReadAllBytes((Join-Path $mobileRoot 'package-lock.json')))).Replace('-', '')
+} finally {
+    $sha256.Dispose()
+}
 $expectedInstallMarker = "package=$packageManifestHash`nlock=$lockfileHash`nexpo=$expectedExpoVersion"
 $installMarkerMatches = $false
 if (Test-Path -LiteralPath $installMarkerPath) {
@@ -502,6 +507,8 @@ if ($Client -eq 'expo') {
     } else {
         Write-Host 'Metro is already running. Use its original "AlumniLink Mobile Metro" window for the QR code and keyboard prompts.'
     }
+} elseif ($Client -eq 'web') {
+    Write-Host 'Open Expo Web at http://localhost:8081.'
 } else {
     Write-Host 'Open the installed AlumniLink development APK on a phone connected to the same Private network.'
 }

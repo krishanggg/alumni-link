@@ -13,6 +13,7 @@ import {
 interface NavChild {
   label: string;
   path: string;
+  badgeCount?: number;
 }
 
 export interface NavItem {

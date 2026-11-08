@@ -4,9 +4,11 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import './index.css'
 
+const routerBasename = import.meta.env.BASE_URL.replace(/\/+$/, '') || '/'
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
+    <BrowserRouter basename={routerBasename}>
       <App />
     </BrowserRouter>
   </StrictMode>,

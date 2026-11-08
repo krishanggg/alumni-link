@@ -1,3 +1,4 @@
-app/
+# Compiled administrator SPA output; generated from web/ during setup/deploy.
+/app/
 storage/
 hot

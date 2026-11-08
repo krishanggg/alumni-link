@@ -30,7 +30,7 @@ export function SettingsLayout({ children, disableNav = false, fillHeight = true
   const adminLinks = [
     { path: '/settings/profile', label: 'Profile' },
     { path: '/settings/security', label: 'Security' },
-    { path: '/settings/notifications', label: 'Email Notifications' },
+    { path: '/settings/notifications', label: 'Notification Preferences' },
     { path: '/settings/backup', label: 'Backup & Restore' },
     { path: '/settings/audit-logs', label: 'Audit Logs' },
     { path: '/settings/system', label: 'System Information' },
@@ -39,7 +39,7 @@ export function SettingsLayout({ children, disableNav = false, fillHeight = true
   const personalSettingsLinks = [
     { path: '/settings/profile', label: 'Profile' },
     { path: '/settings/security', label: 'Security' },
-    { path: '/settings/notifications', label: 'Email Notifications' },
+    { path: '/settings/notifications', label: 'Notification Preferences' },
   ];
 
   const alumniLinks = user?.role === 'alumni' && !ALUMNI_WEB_ENABLED

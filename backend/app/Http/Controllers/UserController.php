@@ -76,7 +76,19 @@ class UserController extends Controller
     {
         $this->authorize('update', $user);
 
+        $changeNotifications = app(\App\Services\SchoolAdminChangeNotificationService::class);
+        $previousSchoolId = $changeNotifications->schoolIdForUser($user);
         $user = $this->userService->update($user, $request->validated());
+        $summary = "User account '{$user->name}' was updated.";
+        $changeNotifications->notify(
+            $request->user(),
+            $previousSchoolId,
+            $summary,
+        );
+        $newSchoolId = $changeNotifications->schoolIdForUser($user);
+        if ($newSchoolId !== $previousSchoolId) {
+            $changeNotifications->notify($request->user(), $newSchoolId, $summary);
+        }
 
         ActivityLog::log(
             $request->user()?->id,
@@ -96,6 +108,11 @@ class UserController extends Controller
         $this->authorize('toggleStatus', $user);
 
         $user = $this->userService->toggleStatus($user);
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(),
+            app(\App\Services\SchoolAdminChangeNotificationService::class)->schoolIdForUser($user),
+            "User account '{$user->name}' was ".($user->is_active ? 'activated' : 'deactivated').'.',
+        );
 
         $action = $user->is_active ? 'user.activated' : 'user.deactivated';
         $desc = $user->is_active ? "User '{$user->name}' activated" : "User '{$user->name}' deactivated";
@@ -118,6 +135,10 @@ class UserController extends Controller
         $this->authorize('delete', $user);
 
         $name = $user->name;
+        $schoolId = app(\App\Services\SchoolAdminChangeNotificationService::class)->schoolIdForUser($user);
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(), $schoolId, "User account '{$name}' was deleted.",
+        );
 
         $this->userService->delete($user);
 
@@ -164,6 +185,12 @@ class UserController extends Controller
         $newPassword = $request->string('password')->toString();
         $passwords->change($user, $newPassword);
 
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(),
+            app(\App\Services\SchoolAdminChangeNotificationService::class)->schoolIdForUser($user),
+            "The password for user account '{$user->name}' was changed.",
+        );
+
         if ($request->boolean('notify')) {
             $user->notify(new PasswordSetByAdminNotification($newPassword));
         }
@@ -187,9 +214,17 @@ class UserController extends Controller
 
     public function linkAlumni(LinkAlumniRequest $request, User $user): JsonResponse
     {
+        $changeNotifications = app(\App\Services\SchoolAdminChangeNotificationService::class);
+        $previousSchoolId = $changeNotifications->schoolIdForUser($user);
         $alumniId = $request->input('alumni_id');
 
         $user = $this->userService->linkAlumni($user, $alumniId);
+        $newSchoolId = $changeNotifications->schoolIdForUser($user);
+        $summary = "An alumni record was linked to user account '{$user->name}'.";
+        $changeNotifications->notify($request->user(), $previousSchoolId, $summary);
+        if ($newSchoolId !== $previousSchoolId) {
+            $changeNotifications->notify($request->user(), $newSchoolId, $summary);
+        }
 
         ActivityLog::log(
             $request->user()?->id,
@@ -206,9 +241,15 @@ class UserController extends Controller
 
     public function unlinkAlumni(Request $request, User $user): JsonResponse
     {
+        $changeNotifications = app(\App\Services\SchoolAdminChangeNotificationService::class);
+        $previousSchoolId = $changeNotifications->schoolIdForUser($user);
         $alumniId = $user->alumni_id;
 
         $user = $this->userService->unlinkAlumni($user);
+        $changeNotifications->notify(
+            $request->user(), $previousSchoolId,
+            "The alumni record was unlinked from user account '{$user->name}'.",
+        );
 
         ActivityLog::log(
             $request->user()?->id,

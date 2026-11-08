@@ -18,7 +18,7 @@ class NotificationPreferenceController extends Controller
 
         $prefs = NotificationPreference::firstOrCreate(
             ['user_id' => $request->user()->id],
-            NotificationPreference::DEFAULTS
+            NotificationPreference::defaultsFor($request->user())
         );
 
         return response()->json([
@@ -34,7 +34,7 @@ class NotificationPreferenceController extends Controller
         // Initialize all preferences with their defaults if needed.
         $prefs = NotificationPreference::firstOrCreate(
             ['user_id' => $request->user()->id],
-            NotificationPreference::DEFAULTS
+            NotificationPreference::defaultsFor($request->user())
         );
 
         // Update only the preferences provided by the mobile app.
@@ -56,6 +56,7 @@ class NotificationPreferenceController extends Controller
             'system_announcements' => $prefs->system_announcements,
             'report_completion' => $prefs->report_completion,
             'feedback' => $prefs->feedback,
+            'administrative_notices' => $prefs->administrative_notices,
         ];
     }
 }

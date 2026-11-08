@@ -5,6 +5,7 @@ import type { User } from '../types/Auth';
 export const approvalKeys = {
   all: ['approvals'] as const,
   list: (filters: Record<string, unknown>) => [...approvalKeys.all, 'list', filters] as const,
+  pendingCount: () => [...approvalKeys.all, 'pending-count'] as const,
 };
 
 export const ApprovalService = {

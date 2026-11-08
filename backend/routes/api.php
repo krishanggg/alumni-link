@@ -243,7 +243,13 @@ Route::middleware(['auth:sanctum', 'role.admin.or.alumni.approved'])->prefix('pr
     Route::get('/remembered-devices', [RememberedDeviceController::class, 'index']);
     Route::delete('/remembered-devices/{id}', [RememberedDeviceController::class, 'destroy']);
     Route::delete('/remembered-devices', [RememberedDeviceController::class, 'destroyAll']);
+});
 
+// Push-token management is limited to the authenticated user's own device
+// tokens, but must also work for pending applicants so rejection notices can
+// reach a phone before approval. Keep these routes outside the approved-only
+// profile group; no other profile endpoint is opened to pending accounts.
+Route::middleware('auth:sanctum')->prefix('profile')->group(function () {
     Route::post('/push-tokens', [PushTokenController::class, 'store']);
     Route::delete('/push-tokens', [PushTokenController::class, 'destroy']);
 });

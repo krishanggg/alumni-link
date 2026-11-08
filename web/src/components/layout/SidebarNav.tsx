@@ -41,14 +41,14 @@ function getActiveChildPath(pathname: string, item: NavItem): string | null {
   return matches.reduce((longest, child) => (child.path.length > longest.path.length ? child : longest)).path;
 }
 
-function UnreadBadge({ count }: { count: number }) {
+function CountBadge({ count, label }: { count: number; label: string }) {
   if (count < 1) {
     return null;
   }
 
   return (
     <span
-      aria-label={`${count} unread feedback conversation${count === 1 ? '' : 's'}`}
+      aria-label={`${count} ${label}`}
       className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-white px-1.5 py-0.5 text-label-sm font-label-sm text-accent"
     >
       {count > 99 ? '99+' : count}
@@ -136,7 +136,7 @@ export function SidebarNav({ items }: SidebarNavProps) {
                 >
                   <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
                   <span>{item.label}</span>
-                  <UnreadBadge count={item.badgeCount ?? 0} />
+                  <CountBadge count={item.badgeCount ?? 0} label={`${item.label.toLowerCase()} pending`} />
                 </MotionLink>
                 <button
                   type="button"
@@ -169,7 +169,7 @@ export function SidebarNav({ items }: SidebarNavProps) {
               >
                 <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
                 <span className="rail:hidden">{item.label}</span>
-                <UnreadBadge count={item.badgeCount ?? 0} />
+                <CountBadge count={item.badgeCount ?? 0} label={`${item.label.toLowerCase()} pending`} />
               </MotionLink>
             )}
 
@@ -190,7 +190,10 @@ export function SidebarNav({ items }: SidebarNavProps) {
                           : 'text-on-primary/65 hover:bg-sidebar-hover hover:text-on-primary'
                       }`}
                     >
-                      {child.label}
+                      <span className="flex items-center gap-2">
+                        {child.label}
+                        <CountBadge count={child.badgeCount ?? 0} label={`${child.label.toLowerCase()} pending`} />
+                      </span>
                     </MotionLink>
                   );
                 })}

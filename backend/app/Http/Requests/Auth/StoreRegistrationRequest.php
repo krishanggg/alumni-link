@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Auth;
 
 use App\Rules\PhilippinePhoneNumber;
-use App\Rules\UniqueEmailLocalPart;
+use App\Rules\UniqueEmailAddress;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -26,7 +26,7 @@ class StoreRegistrationRequest extends FormRequest
             'middle_name' => 'nullable|string|max:100',
             'last_name' => 'required|string|max:255',
             'suffix' => 'nullable|string|max:20',
-            'email' => ['required', 'email', 'max:255', new UniqueEmailLocalPart('users')],
+            'email' => ['required', 'email', 'max:255', new UniqueEmailAddress('users')],
             'username' => 'required|string|max:100|regex:/^[a-zA-Z0-9_]+$/|unique:users,username',
             'password' => ['required', 'string', 'confirmed', Password::min(8)->letters()->mixedCase()->numbers()->symbols()],
             'school_id' => ['required', Rule::exists('schools', 'id')->where('is_active', 1)],

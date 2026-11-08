@@ -69,6 +69,9 @@ class SchoolController extends Controller
         $this->authorize('update', $school);
 
         $school = $this->schoolService->update($school, $request->validated());
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(), $school->id, "School details for '{$school->name}' were updated.",
+        );
 
         ActivityLog::log(
             $request->user()?->id,
@@ -88,6 +91,10 @@ class SchoolController extends Controller
         $this->authorize('update', $school);
 
         $school = $this->schoolService->toggleStatus($school);
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(), $school->id,
+            "School '{$school->name}' was ".($school->is_active ? 'activated' : 'deactivated').'.',
+        );
 
         $action = $school->is_active ? 'school.activated' : 'school.deactivated';
         $desc = $school->is_active
@@ -113,8 +120,17 @@ class SchoolController extends Controller
 
         $name = $school->name;
         $schoolId = $school->id;
+        $changeNotifications = app(\App\Services\SchoolAdminChangeNotificationService::class);
+        $schoolAdmins = \App\Models\User::query()
+            ->where('role', \App\Enums\UserRole::SchoolAdmin)
+            ->where('school_id', $schoolId)
+            ->get();
 
         $this->schoolService->delete($school);
+
+        $changeNotifications->notifyAdmins(
+            $request->user(), $schoolAdmins, $name, "School '{$name}' was deleted.",
+        );
 
         ActivityLog::log(
             $request->user()?->id,
@@ -134,6 +150,9 @@ class SchoolController extends Controller
         $this->authorize('update', $school);
 
         $school = $this->schoolService->uploadLogo($school, $request->file('logo'));
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(), $school->id, "The logo for '{$school->name}' was changed.",
+        );
 
         ActivityLog::log(
             $request->user()?->id,

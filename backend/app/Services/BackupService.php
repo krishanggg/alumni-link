@@ -225,12 +225,14 @@ class BackupService
 
         try {
             $dumpBinary = ($this->binaryResolver)('dump');
+            $tlsOptions = $this->mysqlTlsOptions();
 
-            $this->withMysqlCredentials($password, function (string $credentialsPath) use ($dumpBinary, $host, $port, $username, $database, $temporarySqlPath): void {
+            $this->withMysqlCredentials($password, function (string $credentialsPath) use ($dumpBinary, $tlsOptions, $host, $port, $username, $database, $temporarySqlPath): void {
                 $command = sprintf(
-                    '%s --defaults-extra-file=%s --host=%s --port=%s --user=%s --single-transaction --no-tablespaces %s > %s',
+                    '%s --defaults-extra-file=%s %s --host=%s --port=%s --user=%s --single-transaction --no-tablespaces %s > %s',
                     escapeshellarg($dumpBinary),
                     escapeshellarg($credentialsPath),
+                    $tlsOptions,
                     escapeshellarg($host),
                     escapeshellarg((string) $port),
                     escapeshellarg($username),
@@ -435,12 +437,14 @@ class BackupService
 
         try {
             $mysqlBinary = ($this->binaryResolver)('client');
+            $tlsOptions = $this->mysqlTlsOptions();
 
-            $this->withMysqlCredentials($password, function (string $credentialsPath) use ($mysqlBinary, $host, $port, $username, $database, $temporarySqlPath): void {
+            $this->withMysqlCredentials($password, function (string $credentialsPath) use ($mysqlBinary, $tlsOptions, $host, $port, $username, $database, $temporarySqlPath): void {
                 $command = sprintf(
-                    '%s --defaults-extra-file=%s --host=%s --port=%s --user=%s %s < %s',
+                    '%s --defaults-extra-file=%s %s --host=%s --port=%s --user=%s %s < %s',
                     escapeshellarg($mysqlBinary),
                     escapeshellarg($credentialsPath),
+                    $tlsOptions,
                     escapeshellarg($host),
                     escapeshellarg((string) $port),
                     escapeshellarg($username),
@@ -453,6 +457,27 @@ class BackupService
         } finally {
             @unlink($temporarySqlPath);
         }
+    }
+
+    /**
+     * Retain TLS for CLI connections. If the application has an explicit CA
+     * configured for PDO, require the CLI to verify against that CA too. Some
+     * managed MySQL providers expose a self-signed certificate chain without
+     * a CA bundle; in that case encryption remains enabled while certificate
+     * verification is disabled to match the usable connection configuration.
+     */
+    private function mysqlTlsOptions(): string
+    {
+        $options = config('database.connections.mysql.options', []);
+        $caPath = is_array($options)
+            ? ($options[\Pdo\Mysql::ATTR_SSL_CA] ?? null)
+            : null;
+
+        if (is_string($caPath) && trim($caPath) !== '') {
+            return '--ssl-ca='.escapeshellarg($caPath).' --ssl-verify-server-cert';
+        }
+
+        return '--ssl --disable-ssl-verify-server-cert';
     }
 
     private function runMysqlCommand(string $command, string $operation): void

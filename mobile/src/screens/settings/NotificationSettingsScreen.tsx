@@ -21,7 +21,7 @@ const TOGGLES: ToggleItem[] = [
   {
     key: 'account_activity',
     label: 'Account Activity',
-    description: 'Get notified about password changes and login from new devices',
+    description: 'Get alerts about password changes and sign-ins from a new location or device',
   },
   {
     key: 'alumni_record_updates',
@@ -30,13 +30,13 @@ const TOGGLES: ToggleItem[] = [
   },
   {
     key: 'system_announcements',
-    label: 'System Announcements',
-    description: 'Get notified about new announcements from the school',
+    label: 'Announcements',
+    description: 'Get alerts when an announcement is published for your school or alumni group',
   },
   {
     key: 'report_completion',
-    label: 'Report Completion',
-    description: 'Get notified when a new report is completed',
+    label: 'Published Reports',
+    description: 'Get alerts when your school publishes a report that matches your alumni profile',
   },
 ];
 
@@ -80,7 +80,7 @@ function NotificationSettingsScreen() {
     >
       <Text style={styles.sectionTitle}>Notification Preferences</Text>
       <Text style={styles.subtitle}>
-        Choose which email and push notifications you receive.{'\n'}
+        Each switch controls both email and push notifications for that category. Push alerts require notification permission on this device.{'\n'}
         Changes are saved automatically.
       </Text>
 

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Profile;
 
 use App\Rules\PhilippinePhoneNumber;
-use App\Rules\UniqueEmailLocalPart;
+use App\Rules\UniqueEmailAddress;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateProfileRequest extends FormRequest
@@ -54,13 +54,13 @@ class UpdateProfileRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['sometimes', 'required', 'email', 'max:255', new UniqueEmailLocalPart('users', ignoreId: $this->user()->id)],
+            'email' => ['sometimes', 'required', 'email', 'max:255', new UniqueEmailAddress('users', ignoreId: $this->user()->id)],
             'username' => 'sometimes|required|string|max:100|unique:users,username,'.$this->user()->id,
             'contact_number' => ['sometimes', 'nullable', new PhilippinePhoneNumber],
             'address' => 'sometimes|nullable|string|max:500',
             'privacy' => 'sometimes|nullable|in:public,private',
             'gender' => 'sometimes|nullable|in:male,female',
-            'contact_email' => ['sometimes', 'nullable', 'email', 'max:255', new UniqueEmailLocalPart('alumni', column: 'contact_email', ignoreId: $this->user()->alumni_id)],
+            'contact_email' => ['sometimes', 'nullable', 'email', 'max:255', new UniqueEmailAddress('alumni', column: 'contact_email', ignoreId: $this->user()->alumni_id)],
             'birthdate' => 'sometimes|nullable|date|before:today',
             'employment_status' => 'sometimes|nullable|in:student,self_employed,unemployed,employed,retired',
             'company_name' => 'nullable|string|max:255|required_if:employment_status,employed,self_employed',

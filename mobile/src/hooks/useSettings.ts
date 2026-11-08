@@ -83,7 +83,11 @@ export function useNotificationPreferences() {
     mutationFn: (payload: Partial<NotificationPreferences>) =>
       settingsService.updateNotificationPreferences(payload),
     onMutate: async (payload) => {
-      await queryClient.cancelQueries({ queryKey: settingsKeys.notifications() });
+      // Start cancelling an in-flight fetch, but update the controlled Switch
+      // before awaiting it. Waiting first lets the native Switch animate to its
+      // new value, receive the old controlled value on a render, then flip
+      // again when the optimistic cache write finally happens.
+      const cancelQuery = queryClient.cancelQueries({ queryKey: settingsKeys.notifications() });
       const previous = queryClient.getQueryData<NotificationPreferencesResponse>(
         settingsKeys.notifications(),
       );
@@ -93,6 +97,8 @@ export function useNotificationPreferences() {
           preferences: { ...previous.preferences, ...payload },
         });
       }
+
+      await cancelQuery;
 
       return { previous };
     },

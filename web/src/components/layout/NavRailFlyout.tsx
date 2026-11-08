@@ -180,7 +180,17 @@ export function NavRailFlyout({ item, active, activeChildPath }: NavRailFlyoutPr
                     : 'text-on-primary/80 hover:bg-sidebar-hover hover:text-on-primary'
                 }`}
               >
-                {child.label}
+                <span className="flex items-center justify-between gap-2">
+                  {child.label}
+                  {child.badgeCount !== undefined && child.badgeCount > 0 && (
+                    <span
+                      aria-label={`${child.badgeCount} ${child.label.toLowerCase()} pending`}
+                      className="inline-flex min-w-5 items-center justify-center rounded-full bg-white px-1.5 py-0.5 text-label-sm font-label-sm text-accent"
+                    >
+                      {child.badgeCount > 99 ? '99+' : child.badgeCount}
+                    </span>
+                  )}
+                </span>
               </MotionLink>
             );
           })}

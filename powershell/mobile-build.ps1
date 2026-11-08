@@ -168,36 +168,69 @@ function Get-SdkManager {
 function Install-AndroidCommandLineTools {
     Write-Step 'Installing Android SDK command-line tools'
     New-Item -ItemType Directory -Path $SdkRoot -Force | Out-Null
+    $temp = Join-Path $env:TEMP ('alumnilink-android-tools-' + [Guid]::NewGuid().ToString('N'))
+    $repositoryPath = Join-Path $temp 'repository.xml'
+    $zip = Join-Path $temp 'command-line-tools.zip'
+    try {
+        New-Item -ItemType Directory -Path $temp -Force | Out-Null
+        Invoke-WebRequest -UseBasicParsing 'https://dl.google.com/android/repository/repository2-1.xml' -OutFile $repositoryPath
 
-    [xml]$repository = (Invoke-WebRequest -UseBasicParsing 'https://dl.google.com/android/repository/repository2-1.xml').Content
-    $packages = @($repository.SelectNodes("//*[local-name()='remotePackage' and starts-with(@path,'cmdline-tools;')]"))
+        # Stream Google's large SDK catalog instead of materializing the entire
+        # catalog as an XmlDocument and running a descendant XPath over it.
+        $choices = New-Object 'System.Collections.Generic.List[object]'
+        $reader = [System.Xml.XmlReader]::Create($repositoryPath)
+        try {
+            while ($reader.Read()) {
+                if ($reader.NodeType -ne [System.Xml.XmlNodeType]::Element -or
+                    $reader.LocalName -ne 'remotePackage') { continue }
 
-    $choices = foreach ($package in $packages) {
-        $suffix = ($package.path -split ';', 2)[1]
-        $version = $null
-        if (-not [version]::TryParse($suffix, [ref]$version)) { continue }
+                $packagePath = $reader.GetAttribute('path')
+                if (-not $packagePath -or -not $packagePath.StartsWith('cmdline-tools;')) { continue }
+                $version = $null
+                if (-not [version]::TryParse(($packagePath -split ';', 2)[1], [ref]$version)) { continue }
 
-        foreach ($archive in @($package.SelectNodes("./*[local-name()='archives']/*[local-name()='archive']"))) {
-            $hostOsNode = $archive.SelectSingleNode("./*[local-name()='host-os']")
-            if (-not $hostOsNode -or $hostOsNode.InnerText -ne 'windows') { continue }
-            $urlNode = $archive.SelectSingleNode("./*[local-name()='complete']/*[local-name()='url']")
-            if ($urlNode) {
-                [pscustomobject]@{
-                    Version = $version
-                    Url = 'https://dl.google.com/android/repository/' + $urlNode.InnerText
+                $packageReader = $reader.ReadSubtree()
+                try {
+                    while ($packageReader.Read()) {
+                        if ($packageReader.NodeType -ne [System.Xml.XmlNodeType]::Element -or
+                            $packageReader.LocalName -ne 'archive') { continue }
+
+                        $archiveReader = $packageReader.ReadSubtree()
+                        $hostOs = $null
+                        $archiveUrl = $null
+                        try {
+                            while ($archiveReader.Read()) {
+                                if ($archiveReader.NodeType -ne [System.Xml.XmlNodeType]::Element) { continue }
+                                if ($archiveReader.LocalName -eq 'host-os') {
+                                    $hostOs = $archiveReader.ReadElementContentAsString()
+                                } elseif ($archiveReader.LocalName -eq 'url') {
+                                    $archiveUrl = $archiveReader.ReadElementContentAsString()
+                                }
+                            }
+                        } finally {
+                            $archiveReader.Close()
+                        }
+
+                        if ($hostOs -eq 'windows' -and $archiveUrl) {
+                            $choices.Add([pscustomobject]@{
+                                Version = $version
+                                Url = 'https://dl.google.com/android/repository/' + $archiveUrl
+                            })
+                        }
+                    }
+                } finally {
+                    $packageReader.Close()
                 }
             }
+        } finally {
+            $reader.Close()
         }
-    }
 
-    $choice = $choices | Sort-Object Version -Descending | Select-Object -First 1
-    if (-not $choice) {
-        throw 'Could not determine the current Windows Android command-line tools package.'
-    }
+        $choice = $choices | Sort-Object Version -Descending | Select-Object -First 1
+        if (-not $choice) {
+            throw 'Could not determine the current Windows Android command-line tools package.'
+        }
 
-    $temp = Join-Path $env:TEMP ('alumnilink-android-tools-' + [Guid]::NewGuid().ToString('N'))
-    $zip = "$temp.zip"
-    try {
         Invoke-WebRequest -UseBasicParsing $choice.Url -OutFile $zip
         Expand-Archive -LiteralPath $zip -DestinationPath $temp -Force
 
@@ -242,7 +275,7 @@ function Ensure-AndroidSdk {
     }
 
     Write-Step 'Installing Android SDK 36 build requirements'
-    Invoke-Native $sdkManager "--sdk_root=$SdkRoot" 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+    Invoke-Native $sdkManager "--sdk_root=$SdkRoot" 'platform-tools' 'platforms/android-36' 'build-tools/36.0.0'
     Write-Host "[OK] Android SDK: $SdkRoot"
 }
 
@@ -270,8 +303,13 @@ function Get-ExpectedMobileInstall {
         Pop-Location
     }
 
-    $packageHash = (Get-FileHash -LiteralPath (Join-Path $MobileRoot 'package.json') -Algorithm SHA256).Hash
-    $lockHash = (Get-FileHash -LiteralPath (Join-Path $MobileRoot 'package-lock.json') -Algorithm SHA256).Hash
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $packageHash = [BitConverter]::ToString($sha256.ComputeHash([IO.File]::ReadAllBytes((Join-Path $MobileRoot 'package.json')))).Replace('-', '')
+        $lockHash = [BitConverter]::ToString($sha256.ComputeHash([IO.File]::ReadAllBytes((Join-Path $MobileRoot 'package-lock.json')))).Replace('-', '')
+    } finally {
+        $sha256.Dispose()
+    }
     return [pscustomobject]@{
         ExpoVersion = $expoVersion
         Marker = "package=$packageHash`nlock=$lockHash`nexpo=$expoVersion"
@@ -471,7 +509,28 @@ Write-Host "[OK] Local mobile API will use: $apiUrl"
 
 $env:EXPO_PUBLIC_API_URL = $apiUrl
 $env:REACT_NATIVE_PACKAGER_HOSTNAME = $lanIp
-$env:ALUMNILINK_LOCAL_DEV = '1'
+$env:NODE_ENV = 'production'
+if ($env:ALUMNILINK_LOCAL_DEV -match '^(0|false|no)$') {
+    $env:ALUMNILINK_LOCAL_DEV = '0'
+} elseif ($env:ALUMNILINK_LOCAL_DEV -match '^(1|true|yes)$') {
+    $env:ALUMNILINK_LOCAL_DEV = '1'
+} else {
+    $googleServicesPath = Join-Path $MobileRoot 'google-services.json'
+    $hasDevFirebaseClient = $false
+    if (Test-Path -LiteralPath $googleServicesPath) {
+        try {
+            $googleServices = Get-Content -LiteralPath $googleServicesPath -Raw | ConvertFrom-Json
+            $hasDevFirebaseClient = @($googleServices.client | Where-Object {
+                $_.client_info.android_client_info.package_name -eq 'com.app.alumnilink.dev'
+            }).Count -gt 0
+        } catch {
+            $hasDevFirebaseClient = $false
+        }
+    }
+    $env:ALUMNILINK_LOCAL_DEV = if ($hasDevFirebaseClient) { '1' } else { '0' }
+}
+$androidPackage = if ($env:ALUMNILINK_LOCAL_DEV -eq '1') { 'com.app.alumnilink.dev' } else { 'com.app.alumnilink' }
+Write-Host "[INFO] Android application ID: $androidPackage"
 
 Write-Step 'Checking mobile dependencies'
 $expectedInstall = Get-ExpectedMobileInstall
@@ -488,6 +547,16 @@ try {
     Invoke-Native npx.cmd expo prebuild --platform android --clean
 
     Enable-LocalCleartext
+
+    $gradleProperties = Join-Path $MobileRoot 'android\gradle.properties'
+    $gradlePropertiesText = [IO.File]::ReadAllText($gradleProperties)
+    $gradleJvmArgs = 'org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=2g'
+    if ($gradlePropertiesText -match '(?m)^org\.gradle\.jvmargs=.*$') {
+        $gradlePropertiesText = [regex]::Replace($gradlePropertiesText, '(?m)^org\.gradle\.jvmargs=.*$', $gradleJvmArgs)
+    } else {
+        $gradlePropertiesText += [Environment]::NewLine + $gradleJvmArgs + [Environment]::NewLine
+    }
+    [IO.File]::WriteAllText($gradleProperties, $gradlePropertiesText, (New-Object Text.UTF8Encoding($false)))
 
     $localProperties = Join-Path $MobileRoot 'android\local.properties'
     $sdkProperty = $SdkRoot.Replace('\', '/')

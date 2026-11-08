@@ -1,4 +1,4 @@
-import { useState, useReducer, useRef, type ReactNode } from 'react';
+import { useEffect, useState, useReducer, useRef, type ReactNode } from 'react';
 import { UserRound, GraduationCap, Phone, BriefcaseBusiness } from 'lucide-react';
 
 import type { AlumniRecord } from '../../hooks/useAlumni';
@@ -16,7 +16,7 @@ import { FormErrorSummary } from '../shared/FormErrorSummary';
 
 import { AlumniService } from '../../services/AlumniService';
 
-import { AlumniFormSchema, type AlumniFormValues } from '../../schemas/AlumniSchema';
+import { AlumniFormSchema, AlumniFormSchemaWithRequiredSchool, type AlumniFormValues } from '../../schemas/AlumniSchema';
 import { optionalPhilippinePhoneNumber, toFieldErrors } from '../../schemas/common';
 import { DEFAULT_ICON_TONE } from '../../lib/toneClasses';
 import { formatLastFirstName } from '../../utils/formatName';
@@ -57,6 +57,7 @@ interface AlumniFormProps {
   fieldErrors?: Record<string, string[]>;
   lockedSchoolId?: number | null;
   initialSchoolId?: number | null;
+  requireSchool?: boolean;
 }
 
 interface FormState {
@@ -101,7 +102,7 @@ function getLiveContactNumberError(value: string): string | undefined {
   return result.error.issues[0]?.message;
 }
 
-export function AlumniForm({ initialData, onSubmit, onCancel, isSubmitting, error, fieldErrors = {}, lockedSchoolId = null, initialSchoolId = null }: AlumniFormProps) {
+export function AlumniForm({ initialData, onSubmit, onCancel, isSubmitting, error, fieldErrors = {}, lockedSchoolId = null, initialSchoolId = null, requireSchool = false }: AlumniFormProps) {
   const isSchoolAdmin = lockedSchoolId !== null;
   const [state, dispatch] = useReducer(formReducer, {
     firstName: initialData?.first_name ?? '',
@@ -131,6 +132,12 @@ export function AlumniForm({ initialData, onSubmit, onCancel, isSubmitting, erro
   const [emailAvailabilityError, setEmailAvailabilityError] = useState<string | undefined>();
   const emailCheckToken = useRef(0);
 
+  useEffect(() => {
+    if (!initialData && !isSchoolAdmin) {
+      dispatch({ type: 'SET_FIELD', field: 'schoolId', value: initialSchoolId ? String(initialSchoolId) : '' });
+    }
+  }, [initialData, initialSchoolId, isSchoolAdmin]);
+
   const mergedFieldErrors = { ...fieldErrors, ...clientFieldErrors };
 
   async function handleEmailBlur() {
@@ -146,7 +153,7 @@ export function AlumniForm({ initialData, onSubmit, onCancel, isSubmitting, erro
       const { available } = await AlumniService.checkAlumniEmailAvailability(email, initialData?.id);
 
       if (emailCheckToken.current === token) {
-        setEmailAvailabilityError(available ? undefined : 'This email prefix is already registered. Try a different one, e.g. add a number before the @.');
+        setEmailAvailabilityError(available ? undefined : 'This email address is already registered.');
       }
     } catch {
       // Availability is still authoritatively enforced on save; a failed live check is not fatal.
@@ -199,7 +206,8 @@ export function AlumniForm({ initialData, onSubmit, onCancel, isSubmitting, erro
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const result = AlumniFormSchema.safeParse(buildPayload());
+    const schema = requireSchool ? AlumniFormSchemaWithRequiredSchool : AlumniFormSchema;
+    const result = schema.safeParse(buildPayload());
 
     if (!result.success) {
       setClientFieldErrors(toFieldErrors(result.error));
@@ -311,7 +319,7 @@ export function AlumniForm({ initialData, onSubmit, onCancel, isSubmitting, erro
       {isSchoolAdmin ? (
         <p className="text-label-md text-on-surface-variant">School assignment is enforced for your school.</p>
       ) : (
-        <SchoolSelect value={state.schoolId} onChange={(v) => dispatch({ type: 'SET_FIELD', field: 'schoolId', value: v })} error={mergedFieldErrors.school_id?.[0]} required={false} />
+        <SchoolSelect value={state.schoolId} onChange={(v) => dispatch({ type: 'SET_FIELD', field: 'schoolId', value: v })} error={mergedFieldErrors.school_id?.[0]} required={requireSchool} />
       )}
       </FormSection>
 

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('queue', 'scheduler')]
+    [ValidateSet('queue', 'scheduler', 'reverb')]
     [string]$Mode,
 
     [Parameter(Mandatory = $true)]
@@ -15,11 +15,15 @@ $ErrorActionPreference = 'Stop'
 $Root = [IO.Path]::GetFullPath($Root)
 $LogPath = [IO.Path]::GetFullPath($LogPath)
 
-$label = if ($Mode -eq 'queue') { 'AlumniLink Queue Worker' } else { 'AlumniLink Scheduler' }
-$command = if ($Mode -eq 'queue') {
-    @('artisan', 'queue:work', '--sleep=3', '--tries=3', '--timeout=90')
-} else {
-    @('artisan', 'schedule:run')
+$label = switch ($Mode) {
+    'queue' { 'AlumniLink Queue Worker' }
+    'scheduler' { 'AlumniLink Scheduler' }
+    'reverb' { 'AlumniLink Reverb Server' }
+}
+$command = switch ($Mode) {
+    'queue' { @('artisan', 'queue:work', '--sleep=3', '--tries=3', '--timeout=90') }
+    'scheduler' { @('artisan', 'schedule:run') }
+    'reverb' { @('artisan', 'reverb:start') }
 }
 
 $host.UI.RawUI.WindowTitle = $label
@@ -38,7 +42,7 @@ $timestamp = '[{0}] starting {1}' -f (Get-Date -Format 's'), $label
 $timestamp | Tee-Object -FilePath $LogPath -Append
 
 try {
-    if ($Mode -eq 'queue') {
+    if ($Mode -eq 'queue' -or $Mode -eq 'reverb') {
         & php @command 2>&1 | Tee-Object -FilePath $LogPath -Append
         $exitCode = $LASTEXITCODE
     } else {

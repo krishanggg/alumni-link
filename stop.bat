@@ -4,7 +4,7 @@ set "STATE_DIR=%LOCALAPPDATA%\AlumniLink"
 if not defined LOCALAPPDATA set "STATE_DIR=%TEMP%\AlumniLink"
 
 if /I "%~1"=="--help" (
-  echo Stops only the AlumniLink queue worker and scheduler processes started by start.bat.
+  echo Stops AlumniLink queue worker, scheduler, Reverb, frontend, and backend log processes started by start.bat.
   echo WAMP Apache and MySQL are not changed.
   exit /b 0
 )
@@ -13,12 +13,14 @@ call :stop_pid "%STATE_DIR%\queue-worker.pid" "AlumniLink Queue Worker"
 if errorlevel 1 exit /b 1
 call :stop_pid "%STATE_DIR%\scheduler.pid" "AlumniLink Scheduler"
 if errorlevel 1 exit /b 1
+call :stop_pid "%STATE_DIR%\reverb.pid" "AlumniLink Reverb Server"
+if errorlevel 1 exit /b 1
 call :stop_pid "%STATE_DIR%\backend-log.pid" "AlumniLink Laravel Backend Log"
 if errorlevel 1 exit /b 1
 call :stop_pid "%STATE_DIR%\vite.pid" "AlumniLink Vite Frontend"
 if errorlevel 1 exit /b 1
 
-echo AlumniLink frontend dev server, queue worker, scheduler, and backend log console stopped. WAMP Apache and MySQL were not changed.
+echo AlumniLink frontend dev server, queue worker, scheduler, Reverb server, and backend log console stopped. WAMP Apache and MySQL were not changed.
 exit /b 0
 
 :stop_pid

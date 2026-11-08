@@ -14,7 +14,7 @@ use App\Http\Requests\Alumni\UploadProfilePhotoRequest;
 use App\Http\Resources\AlumniListResource;
 use App\Http\Resources\AlumniResource;
 use App\Models\Alumni;
-use App\Rules\UniqueEmailLocalPart;
+use App\Rules\UniqueEmailAddress;
 use App\Services\AlumniService;
 use App\Services\DashboardCacheService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -81,7 +81,16 @@ class AlumniController extends Controller
             $attributes['school_id'] = $request->user()->school_id;
         }
 
+        $previousSchoolId = $alumnus->school_id;
         $alumnus = $this->alumniService->update($alumnus, $attributes, $request->user()?->id);
+        $changeNotifications = app(\App\Services\SchoolAdminChangeNotificationService::class);
+        $summary = "Alumni record '{$alumnus->name}' was updated.";
+        $changeNotifications->notify(
+            $request->user(), $previousSchoolId, $summary,
+        );
+        if ($alumnus->school_id !== $previousSchoolId) {
+            $changeNotifications->notify($request->user(), $alumnus->school_id, $summary);
+        }
         $this->dashboardCacheService->forget($alumnus->school_id);
 
         return response()->json(new AlumniResource($alumnus->fresh(['school', 'creator', 'updater'])));
@@ -93,6 +102,9 @@ class AlumniController extends Controller
 
         $this->authorize('delete', $alumnus);
 
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(), $alumnus->school_id, "Alumni record '{$alumnus->name}' was archived.",
+        );
         $this->alumniService->delete($alumnus, $request->user()?->id);
         $this->dashboardCacheService->forget($alumnus->school_id);
 
@@ -108,6 +120,9 @@ class AlumniController extends Controller
         $this->authorize('restore', $alumni);
 
         $alumni = $this->alumniService->restore($alumni, $request->user()?->id);
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(), $alumni->school_id, "Alumni record '{$alumni->name}' was restored.",
+        );
         $this->dashboardCacheService->forget($alumni->school_id);
 
         return response()->json(new AlumniResource($alumni->load(['school', 'creator', 'updater'])));
@@ -126,6 +141,9 @@ class AlumniController extends Controller
         }
 
         $schoolId = $alumni->school_id;
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(), $schoolId, "Alumni record '{$alumni->name}' was permanently deleted.",
+        );
         $this->alumniService->forceDelete($alumni, $request->user()?->id);
         $this->dashboardCacheService->forget($schoolId);
 
@@ -171,6 +189,9 @@ class AlumniController extends Controller
         $this->authorize('uploadPhoto', $alumnus);
 
         $alumnus = $this->alumniService->uploadPhoto($alumnus, $request->file('photo'));
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(), $alumnus->school_id, "A photo for alumni record '{$alumnus->name}' was updated.",
+        );
         $this->dashboardCacheService->forget($alumnus->school_id);
 
         return response()->json(new AlumniResource($alumnus->load(['school'])));
@@ -183,6 +204,11 @@ class AlumniController extends Controller
         $this->authorize('uploadPhoto', $alumnus);
 
         $hadPhoto = (bool) $alumnus->profile_photo;
+        if ($hadPhoto) {
+            app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+                $request->user(), $alumnus->school_id, "A photo for alumni record '{$alumnus->name}' was removed.",
+            );
+        }
         $alumnus = $this->alumniService->deletePhoto($alumnus, $request->user()?->id);
 
         if ($hadPhoto) {
@@ -202,7 +228,7 @@ class AlumniController extends Controller
     public function checkEmailAvailability(CheckEmailAvailabilityRequest $request): JsonResponse
     {
         $user = $request->user();
-        $rule = new UniqueEmailLocalPart(
+        $rule = new UniqueEmailAddress(
             'alumni',
             column: 'contact_email',
             ignoreId: $request->input('exclude_id'),

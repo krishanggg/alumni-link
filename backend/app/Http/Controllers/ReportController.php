@@ -395,6 +395,9 @@ class ReportController extends Controller
             ? Storage::disk('local')->size($newPath)
             : null,
     ]);
+    app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+        $request->user(), $report->school_id, "Report '{$report->title}' was published.",
+    );
 
     // Remove the previous file only when it has been replaced.
     if (
@@ -455,6 +458,9 @@ class ReportController extends Controller
         $this->authorize('unpublish', $report);
 
         $report->update(['visibility' => ReportVisibility::AdminOnly, 'published_at' => null]);
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(), $report->school_id, "Report '{$report->title}' was unpublished.",
+        );
 
         ActivityLog::log(
             $request->user()?->id,
@@ -479,6 +485,9 @@ class ReportController extends Controller
             'archived_at' => now(),
             'visibility' => ReportVisibility::AdminOnly,
         ]);
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(), $report->school_id, "Report '{$report->title}' was archived.",
+        );
 
         $desc = $wasPublished
             ? "Report '{$report->title}' archived and unpublished"
@@ -509,6 +518,9 @@ class ReportController extends Controller
             'lifecycle_status' => ReportLifecycleStatus::Active,
             'archived_at' => null,
         ]);
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(), $report->school_id, "Report '{$report->title}' was restored from archive.",
+        );
 
         ActivityLog::log(
             $request->user()?->id,
@@ -528,6 +540,9 @@ class ReportController extends Controller
         $this->authorize('delete', $report);
 
         $desc = "Report '{$report->title}' deleted";
+        app(\App\Services\SchoolAdminChangeNotificationService::class)->notify(
+            $request->user(), $report->school_id, "Report '{$report->title}' was deleted.",
+        );
 
         if ($report->file_path && Storage::disk('local')->exists($report->file_path)) {
             Storage::disk('local')->delete($report->file_path);

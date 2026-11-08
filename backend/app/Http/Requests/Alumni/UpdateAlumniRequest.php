@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Alumni;
 
 use App\Rules\PhilippinePhoneNumber;
-use App\Rules\UniqueEmailLocalPart;
+use App\Rules\UniqueEmailAddress;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateAlumniRequest extends FormRequest
@@ -44,7 +44,7 @@ class UpdateAlumniRequest extends FormRequest
             'gender' => 'nullable|in:male,female',
             'birthdate' => 'nullable|date|before:today',
             'contact_number' => ['nullable', new PhilippinePhoneNumber],
-            'contact_email' => ['nullable', 'email', 'max:255', new UniqueEmailLocalPart('alumni', column: 'contact_email', ignoreId: $alumniId)],
+            'contact_email' => ['nullable', 'email', 'max:255', new UniqueEmailAddress('alumni', column: 'contact_email', ignoreId: $alumniId)],
             'address' => 'nullable|string|max:500',
             'employment_status' => 'nullable|in:student,self_employed,unemployed,employed,retired',
             'company_name' => 'nullable|string|max:255|required_if:employment_status,employed,self_employed',

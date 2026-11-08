@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -14,6 +15,7 @@ class NotificationPreference extends Model
     protected $fillable = [
         'user_id', 'account_activity', 'alumni_record_updates',
         'system_announcements', 'report_completion', 'feedback',
+        'administrative_notices',
     ];
 
     public const DEFAULTS = [
@@ -22,7 +24,26 @@ class NotificationPreference extends Model
         'system_announcements' => true,
         'report_completion' => true,
         'feedback' => true,
+        'administrative_notices' => true,
     ];
+
+    /**
+     * Feedback threads are an admin-only workflow, so alumni start with that
+     * category disabled while admin accounts keep it enabled.
+     *
+     * @return array<string, bool>
+     */
+    public static function defaultsFor(User $user): array
+    {
+        $defaults = self::DEFAULTS;
+
+        if ($user->role === UserRole::Alumni) {
+            $defaults['feedback'] = false;
+            $defaults['administrative_notices'] = false;
+        }
+
+        return $defaults;
+    }
 
     public function casts(): array
     {
@@ -32,6 +53,7 @@ class NotificationPreference extends Model
             'system_announcements' => 'boolean',
             'report_completion' => 'boolean',
             'feedback' => 'boolean',
+            'administrative_notices' => 'boolean',
         ];
     }
 
@@ -47,7 +69,7 @@ class NotificationPreference extends Model
      */
     public static function allows(User $user, string $category): bool
     {
-        $prefs = self::firstOrCreate(['user_id' => $user->id], self::DEFAULTS);
+        $prefs = self::firstOrCreate(['user_id' => $user->id], self::defaultsFor($user));
 
         return (bool) $prefs->{$category};
     }
