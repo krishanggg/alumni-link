@@ -1,1 +1,0 @@
-import{p as e,r as t,ut as n}from"./icons-CY3TycZS.js";import"./index-DGf20PNH.js";var r={yearly_comparison:{icon:e,tone:`purple`},alumni_summary:{icon:t,tone:`blue`}},i={icon:n,tone:`gray`};function a(e){return e.split(`_`).map(e=>e.charAt(0).toUpperCase()+e.slice(1)).join(` `)}function o(e){return e.split(`.`).map(e=>a(e)).join(` `)}export{a as i,r as n,o as r,i as t};
