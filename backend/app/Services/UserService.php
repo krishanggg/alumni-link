@@ -29,7 +29,13 @@ class UserService
      */
     public function list(array $filters): array
     {
-        $query = User::query();
+        // Archiving an alumni record revokes the linked account's access while
+        // preserving the link for restoration. Keep that account out of the
+        // Super Admin's active user list until the alumni record is restored.
+        $query = User::query()->where(function (Builder $query) {
+            $query->whereNull('alumni_id')
+                ->orWhereNotIn('alumni_id', Alumni::onlyTrashed()->select('id'));
+        });
         $this->applyIndexFilters($query, $filters);
 
         // Aggregated before ordering/pagination so the summary cards describe the
