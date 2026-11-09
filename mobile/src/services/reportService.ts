@@ -68,25 +68,49 @@ export async function downloadReport(id: number, title: string, format: ReportFo
     return;
   }
 
-  const fileUri = `${FileSystem.cacheDirectory}report_${id}_${safeFragment}${ext}`;
+  const fileName = `report_${id}_${safeFragment}${ext}`;
+  const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
 
   const result = await FileSystem.downloadAsync(url, fileUri, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
 
   if (result.status !== 200) {
+    let message = 'Report download failed';
+    try {
+      const body = await FileSystem.readAsStringAsync(result.uri);
+      const parsed = JSON.parse(body) as { message?: string };
+      if (parsed.message) message = parsed.message;
+    } catch {
+      // The response may be a non-JSON server or proxy error.
+    }
     await FileSystem.deleteAsync(result.uri, { idempotent: true });
-    throw new ApiError('Report download failed', result.status);
+    throw new ApiError(message, result.status);
   }
 
-  const canShare = await Sharing.isAvailableAsync();
-
-  if (canShare) {
+  if (Platform.OS === 'android') {
+    const permission = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+    if (!permission.granted) {
+      throw new ApiError('Choose a folder to save the report.', 0);
+    }
+    const base64 = await FileSystem.readAsStringAsync(result.uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    const destination = await FileSystem.StorageAccessFramework.createFileAsync(
+      permission.directoryUri,
+      fileName,
+      mimeType,
+    );
+    await FileSystem.writeAsStringAsync(destination, base64, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    await FileSystem.deleteAsync(result.uri, { idempotent: true });
+  } else if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(result.uri, {
       mimeType,
       dialogTitle: title,
     });
   } else {
-    throw new ApiError('Sharing is not available on this device', 0);
+    throw new ApiError('Saving reports is not available on this device.', 0);
   }
 }

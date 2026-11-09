@@ -56,7 +56,9 @@ function ReportViewer({ visible, reportId, title, format, openWindow, onClose }:
     setError(null);
     try {
       const token = await getToken();
-      const url = format === 'xlsx'
+      const isWebPreview = Platform.OS === 'web' && format === 'xlsx';
+      const isPdfPreview = format === 'pdf';
+      const url = isWebPreview || isPdfPreview
         ? `${getApiBase()}/reports/${reportId}/preview`
         : `${getApiBase()}/reports/${reportId}/download`;
       const ext = FORMAT_EXT[format] ?? '.pdf';
@@ -77,9 +79,11 @@ function ReportViewer({ visible, reportId, title, format, openWindow, onClose }:
           return;
         }
 
-        const previewBlob = format === 'xlsx'
+        const previewBlob = isWebPreview
           ? new Blob([await response.text()], { type: 'text/html;charset=utf-8' })
-          : await response.blob();
+          : isPdfPreview
+            ? new Blob([Uint8Array.from(atob(((await response.json()) as { pdf: string }).pdf), (char) => char.charCodeAt(0))], { type: mimeType })
+            : await response.blob();
         const objectUrl = URL.createObjectURL(previewBlob);
         openWindow.document.title = title;
         openWindow.location.replace(objectUrl);
@@ -89,26 +93,41 @@ function ReportViewer({ visible, reportId, title, format, openWindow, onClose }:
       }
 
       const fileUri = `${FileSystem.cacheDirectory}report_${reportId}_${safeFragment}${ext}`;
-
-      const result = await FileSystem.downloadAsync(url, fileUri, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-
-      if (result.status !== 200) {
-        await FileSystem.deleteAsync(result.uri, { idempotent: true });
-        setError('Report is no longer available.');
-        return;
+      let resultUri: string;
+      if (isPdfPreview) {
+        const response = await fetch(url, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!response.ok) {
+          setError('Report is no longer available.');
+          return;
+        }
+        const { pdf } = await response.json() as { pdf: string };
+        await FileSystem.writeAsStringAsync(fileUri, pdf, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        resultUri = fileUri;
+      } else {
+        const result = await FileSystem.downloadAsync(url, fileUri, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (result.status !== 200) {
+          await FileSystem.deleteAsync(result.uri, { idempotent: true });
+          setError('Report is no longer available.');
+          return;
+        }
+        resultUri = result.uri;
       }
 
       if (Platform.OS === 'android') {
-        const contentUri = await FileSystem.getContentUriAsync(result.uri);
+        const contentUri = await FileSystem.getContentUriAsync(resultUri);
         await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
           data: contentUri,
           flags: 1,
           type: mimeType,
         });
       } else {
-        await Sharing.shareAsync(result.uri, {
+        await Sharing.shareAsync(resultUri, {
           mimeType,
           dialogTitle: title,
         });
