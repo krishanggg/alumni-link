@@ -54,7 +54,14 @@ export async function downloadReport(id: number, title: string, format: ReportFo
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (!response.ok) {
-      throw new ApiError('Report download failed', response.status);
+      let message = 'Report download failed';
+      try {
+        const body = await response.json() as { message?: string };
+        if (body.message) message = body.message;
+      } catch {
+        // The server or proxy may return a non-JSON error response.
+      }
+      throw new ApiError(`${message} (HTTP ${response.status})`, response.status);
     }
 
     const objectUrl = URL.createObjectURL(await response.blob());
@@ -85,7 +92,7 @@ export async function downloadReport(id: number, title: string, format: ReportFo
       // The response may be a non-JSON server or proxy error.
     }
     await FileSystem.deleteAsync(result.uri, { idempotent: true });
-    throw new ApiError(message, result.status);
+    throw new ApiError(`${message} (HTTP ${result.status})`, result.status);
   }
 
   if (Platform.OS === 'android') {

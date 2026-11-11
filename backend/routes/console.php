@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Models\ActivityLog;
 use App\Models\Announcement;
-use App\Models\Report;
 use App\Services\RememberedDeviceService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
@@ -35,18 +34,3 @@ Schedule::call(function () {
         });
 })->everyMinute();
 
-Schedule::call(function () {
-    Report::where('visibility', 'admin_only')
-        ->where('lifecycle_status', 'active')
-        ->where('created_at', '<', now()->subDays(90))
-        ->each(function (Report $report): void {
-            $report->update(['lifecycle_status' => 'archived', 'archived_at' => now()]);
-            ActivityLog::log(
-                userId: null,
-                action: 'report.archived',
-                subjectType: Report::class,
-                subjectId: $report->id,
-                description: "Report '{$report->title}' automatically archived after 90 days",
-            );
-        });
-})->daily();

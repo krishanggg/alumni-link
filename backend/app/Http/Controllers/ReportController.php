@@ -209,10 +209,6 @@ class ReportController extends Controller
             return response()->json(['message' => 'Not found.'], 404);
         }
 
-        if (! $report->file_path || ! Storage::disk('local')->exists($report->file_path)) {
-            return response()->json(['message' => 'Report file not found.'], 404);
-        }
-
         if ($report->format === ReportFormat::Pdf) {
             $pdf = $this->reportService->renderPdfForRequest($report);
 
@@ -228,6 +224,12 @@ class ReportController extends Controller
                     'Expires' => '0',
                 ],
             );
+        }
+
+        $this->refreshReportFile($report);
+
+        if (! $report->file_path || ! Storage::disk('local')->exists($report->file_path)) {
+            return response()->json(['message' => 'Report file not found.'], 404);
         }
 
         return response()->download(
@@ -250,8 +252,13 @@ class ReportController extends Controller
             return response()->json(['message' => 'Not found.'], 404);
         }
 
-        if (! $report->file_path || ! Storage::disk('local')->exists($report->file_path)) {
+        if ($report->format !== ReportFormat::Pdf
+            && (! $report->file_path || ! Storage::disk('local')->exists($report->file_path))) {
             return response()->json(['message' => 'Report file not found.'], 404);
+        }
+
+        if ($report->format !== ReportFormat::Pdf) {
+            $this->refreshReportFile($report);
         }
 
         if ($report->format === ReportFormat::Xlsx) {
@@ -277,6 +284,34 @@ class ReportController extends Controller
         return response()->json([
             'pdf' => base64_encode($this->reportService->renderPdfForRequest($report)),
         ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    }
+
+    /** Refresh the persisted CSV/XLSX artifact from current alumni data on access. */
+    private function refreshReportFile(Report $report): void
+    {
+        $filters = $report->filters ?? [];
+        $data = $this->reportService->generateReportData($report->report_type, $filters);
+        $data = $report->visibility === ReportVisibility::Published
+            ? $this->reportService->filterReportDataForPublish($data)
+            : $this->reportService->stripInternalColumns($data);
+
+        $oldPath = $report->file_path;
+        $newPath = $this->reportService->storeReportFile(
+            $data,
+            $report->report_type,
+            $report->format,
+            $report->title,
+            $filters,
+        );
+
+        $report->update([
+            'file_path' => $newPath,
+            'file_size' => $newPath ? Storage::disk('local')->size($newPath) : null,
+        ]);
+
+        if ($oldPath && $oldPath !== $newPath && Storage::disk('local')->exists($oldPath)) {
+            Storage::disk('local')->delete($oldPath);
+        }
     }
 
     public function history(Request $request): JsonResponse
